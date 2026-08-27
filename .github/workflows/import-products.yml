@@ -1,0 +1,72 @@
+name: Import des produits Swissmedic
+
+# Reconstruit products/packages depuis la liste mensuelle des emballages
+# autorisés (données publiques Swissmedic — citée dans le README).
+# Secret requis : SUPABASE_DB_URL (le même que la sauvegarde nocturne).
+
+on:
+  schedule:
+    - cron: '30 3 3 * *' # le 3 du mois — Swissmedic publie le 1er jour ouvrable
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Générer les CSV depuis le fichier Swissmedic
+        run: |
+          set -euo pipefail
+          pip install --quiet openpyxl
+          python3 scripts/import_products.py --out-dir /tmp/import
+          wc -l /tmp/import/*.csv
+
+      - name: Upsert vers Postgres
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm -i -v /tmp/import:/import postgres:17-alpine \
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL' | tee /tmp/result.txt
+          begin;
+          create temp table staging_products (like public.products including defaults);
+          create temp table staging_packages (like public.packages);
+          \copy staging_products (authorization_nr, name, company, atc_code, substances, category) from '/import/products.csv' with (format csv, header true)
+          \copy staging_packages (gtin, authorization_nr, pack_code, description) from '/import/packages.csv' with (format csv, header true)
+
+          -- Upsert sans suppression : un produit retiré du marché reste
+          -- scannable tant que des boîtes circulent.
+          insert into public.products (authorization_nr, name, company, atc_code, substances, category)
+          select authorization_nr, name, nullif(company,''), nullif(atc_code,''),
+                 nullif(substances,''), nullif(category,'')
+            from staging_products
+          on conflict (authorization_nr) do update
+            set name = excluded.name, company = excluded.company,
+                atc_code = excluded.atc_code, substances = excluded.substances,
+                category = excluded.category, imported_at = now();
+
+          insert into public.packages (gtin, authorization_nr, pack_code, description)
+          select gtin, authorization_nr, pack_code, nullif(description,'')
+            from staging_packages
+          on conflict (gtin) do update
+            set authorization_nr = excluded.authorization_nr,
+                pack_code = excluded.pack_code, description = excluded.description;
+          commit;
+
+          select count(*) as produits_total from public.products;
+          select count(*) as emballages_total from public.packages;
+          SQL
+
+      - name: Résumé
+        run: |
+          {
+            echo '### Import Swissmedic'
+            echo '```'
+            cat /tmp/result.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

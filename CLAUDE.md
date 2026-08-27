@@ -48,10 +48,22 @@ ouvrir » va dans le mauvais sens.
   résultat. Ne pas casser ce comportement.
 - **Le compte comptoir est en lecture seule et reste connecté en permanence.**
 
+## v2 (livrée) — scan de boîte → protocoles
+
+- `products`/`packages` importés mensuellement depuis la liste publique
+  Swissmedic (`scripts/import_products.py` + workflow `import-products.yml`).
+  GTIN calculé : 7680 + n° d'autorisation + code emballage + clé EAN-13.
+- Liaison à deux niveaux : `product_resources` (produit précis) et
+  `atc_resources` (préfixe de classe ATC — le vrai levier). La RPC
+  `scan_gtin` renvoie l'union des deux.
+- Un scan qui identifie un produit n'est JAMAIS consigné en recherche vide.
+- `products`/`packages` : aucune policy d'écriture, remplies par l'import
+  (service_role) uniquement.
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
-- Base de médicaments, import AIPS/Refdata. Prévu en v2 (`products` +
-  `product_resources`), mentionné en commentaire dans `0001_init.sql`.
+- Import des textes AIPS (notices complètes) — éventuelle v3.
+- Refdata / pharmacode, sauf si les douchettes de l'officine l'exigent.
 - Multi-officine, rôles au-delà de `can_edit`, panneau d'administration.
 - **Aucune donnée patient, nulle part** : ne jamais ajouter de champ « notes de
   cas » ou tout autre espace de saisie libre qui inviterait à en consigner.

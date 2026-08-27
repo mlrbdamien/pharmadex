@@ -17,3 +17,21 @@ export type ResourceDraft = Pick<
   Partial<Pick<Resource, 'file_path' | 'file_name' | 'file_size' | 'mime_type'>>;
 
 export type SearchMiss = Tables['search_misses']['Row'];
+
+/** Produit Swissmedic identifié par un scan. */
+export type Product = {
+  authorization_nr: string;
+  name: string;
+  company: string | null;
+  atc_code: string | null;
+  substances: string | null;
+  category: string | null;
+  /** Conditionnement de l'emballage précis qui a été scanné. */
+  package_description: string | null;
+};
+
+/** Résultat d'un scan : le produit et les ressources liées (produit + classe ATC). */
+export type ScanHit = {
+  product: Product;
+  resources: Resource[];
+};

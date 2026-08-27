@@ -14,7 +14,9 @@ import {
   searchResources,
   shouldLogMiss,
 } from '../lib/resources';
-import type { Resource } from '../lib/types';
+import { normalizeScannedCode, scanGtin } from '../lib/products';
+import { ProductCard } from '../components/ProductCard';
+import type { Resource, ScanHit } from '../lib/types';
 
 export function Home() {
   const { canEdit } = useAuth();
@@ -25,6 +27,8 @@ export function Home() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   /** Résultats faisant autorité (Postgres). `null` = réponse pas encore arrivée. */
   const [remote, setRemote] = useState<Resource[] | null>(null);
+  /** Fiche produit quand la saisie est un code scanné reconnu. */
+  const [scan, setScan] = useState<ScanHit | null>(null);
 
   const lastLogged = useRef<string | null>(null);
   const requestId = useRef(0);
@@ -32,22 +36,46 @@ export function Home() {
 
   // Recherche serveur, débounce 150 ms. Tant qu'elle est en vol, l'affichage
   // retombe sur le filtre local : l'écran n'est jamais vide entre deux frappes.
+  //
+  // Un code scanné (GTIN) prend une autre voie : identification du produit et
+  // de ses ressources liées, au lieu de la recherche plein texte.
   useEffect(() => {
     if (!trimmed) {
       setRemote(null);
+      setScan(null);
       return;
     }
     setRemote(null);
+    setScan(null);
     const id = ++requestId.current;
+    const code = normalizeScannedCode(trimmed);
     const timer = setTimeout(async () => {
       try {
-        const rows = await searchResources(trimmed);
-        if (id === requestId.current) setRemote(rows);
+        if (code) {
+          const hit = await scanGtin(code);
+          if (id !== requestId.current) return;
+          setScan(hit);
+          // Code inconnu de Swissmedic : la recherche texte n'a aucune chance,
+          // on la laisse s'afficher vide pour que le journal le consigne.
+          setRemote(hit ? (hit.resources as Resource[]) : []);
+        } else {
+          const rows = await searchResources(trimmed);
+          if (id === requestId.current) setRemote(rows);
+        }
       } catch {
         // Le filtre local reste affiché — mieux que rien au comptoir.
       }
     }, 150);
     return () => clearTimeout(timer);
+  }, [trimmed]);
+
+  const rescan = useCallback(() => {
+    const code = normalizeScannedCode(trimmed);
+    if (!code) return;
+    void scanGtin(code).then((hit) => {
+      setScan(hit);
+      setRemote(hit ? (hit.resources as Resource[]) : []);
+    });
   }, [trimmed]);
 
   const base = useMemo(
@@ -59,7 +87,9 @@ export function Home() {
     [base, activeTag],
   );
 
-  // Journal des recherches vides. Deux conditions avant de consigner :
+  // Journal des recherches vides. Un scan qui identifie un produit n'est
+  // jamais consigné — la fiche produit EST une réponse. Deux conditions
+  // avant de consigner :
   //
   // 1. la réponse serveur est arrivée et est vide (`remote`) — se fier au seul
   //    cache local produirait de faux négatifs ;
@@ -67,7 +97,7 @@ export function Home() {
   //    hésitation au milieu d'un mot dure quelques centaines de millisecondes,
   //    pas deux secondes. Ce qui reste est un terme abouti, pas « gross ».
   useEffect(() => {
-    if (!trimmed || remote === null || remote.length > 0) return;
+    if (!trimmed || remote === null || remote.length > 0 || scan !== null) return;
     const timer = setTimeout(() => {
       if (shouldLogMiss(trimmed, lastLogged.current)) {
         lastLogged.current = trimmed;
@@ -75,7 +105,7 @@ export function Home() {
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [trimmed, remote]);
+  }, [trimmed, remote, scan]);
 
   // Entrée ouvre le premier résultat : scan de code-barres → Entrée → la fiche
   // s'ouvre, sans toucher la souris.
@@ -129,8 +159,24 @@ export function Home() {
             <Loader2 className="size-4 animate-spin" /> Chargement…
           </p>
         ) : trimmed ? (
-          results.length > 0 ? (
-            <div className="mt-4 space-y-2">{results.map((r, i) => card(r, i === 0))}</div>
+          scan || results.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              {scan && (
+                <ProductCard
+                  product={scan.product}
+                  canEdit={canEdit}
+                  linked={scan.resources as Resource[]}
+                  onSearchName={(name) => setQuery(name)}
+                  onLinked={rescan}
+                />
+              )}
+              {results.map((r, i) => card(r, i === 0))}
+              {scan && results.length === 0 && (
+                <p className="px-1 text-sm text-slate-500">
+                  Aucune ressource liée à ce produit pour l'instant.
+                </p>
+              )}
+            </div>
           ) : (
             <div className="mt-10 text-center">
               <SearchX className="mx-auto size-8 text-slate-300" />

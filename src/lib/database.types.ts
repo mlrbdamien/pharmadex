@@ -51,6 +51,43 @@ export type Database = {
         Update: { name?: string };
         Relationships: [];
       };
+      products: {
+        Row: {
+          authorization_nr: string;
+          name: string;
+          company: string | null;
+          atc_code: string | null;
+          substances: string | null;
+          category: string | null;
+          imported_at: string;
+        };
+        Insert: never; // rempli par l'import (service_role) uniquement
+        Update: never;
+        Relationships: [];
+      };
+      packages: {
+        Row: {
+          gtin: string;
+          authorization_nr: string;
+          pack_code: string;
+          description: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      product_resources: {
+        Row: { authorization_nr: string; resource_id: string; created_at: string };
+        Insert: { authorization_nr: string; resource_id: string };
+        Update: never;
+        Relationships: [];
+      };
+      atc_resources: {
+        Row: { atc_prefix: string; resource_id: string; created_at: string };
+        Insert: { atc_prefix: string; resource_id: string };
+        Update: never;
+        Relationships: [];
+      };
       search_misses: {
         Row: {
           term: string;
@@ -67,6 +104,11 @@ export type Database = {
     Views: Record<never, never>;
     Functions: {
       search_resources: { Args: { q: string }; Returns: ResourceRow[] };
+      scan_gtin: { Args: { code: string }; Returns: unknown };
+      resolve_codes: {
+        Args: { codes: string[] };
+        Returns: { code: string; name: string }[];
+      };
       log_search_miss: { Args: { q: string }; Returns: undefined };
       is_allowed: { Args: Record<never, never>; Returns: boolean };
       can_edit: { Args: Record<never, never>; Returns: boolean };

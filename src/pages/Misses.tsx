@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Loader2, Plus, ScanBarcode, Trash2 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { deleteMiss, listMisses } from '../lib/misses';
+import { resolveCodes } from '../lib/products';
 import type { SearchMiss } from '../lib/types';
 import { formatDate } from '../lib/format';
 
@@ -11,11 +12,19 @@ export function Misses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hideCodes, setHideCodes] = useState(true);
+  /** code scanné → nom du produit, quand Swissmedic le connaît. */
+  const [names, setNames] = useState<Map<string, string>>(new Map());
 
   async function load() {
     try {
-      setRows(await listMisses());
+      const misses = await listMisses();
+      setRows(misses);
       setError(null);
+      // Depuis la v2, un code résolu n'atterrit plus ici ; ces lignes datent
+      // d'avant l'import, ou concernent des codes hors Swissmedic. Résoudre
+      // les noms transforme le journal en liste de liaisons à créer.
+      const codes = misses.filter((m) => m.is_code).map((m) => m.term);
+      setNames(await resolveCodes(codes));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Chargement impossible');
     } finally {
@@ -84,6 +93,11 @@ export function Misses() {
                     {row.term}
                     {row.is_code && (
                       <ScanBarcode className="ml-1.5 inline size-3.5 text-slate-300" aria-label="code-barres" />
+                    )}
+                    {names.has(row.term) && (
+                      <span className="ml-2 font-normal text-slate-400">
+                        {names.get(row.term)}
+                      </span>
                     )}
                   </td>
                   <td className="py-2 text-right tabular-nums text-slate-600">{row.hits}</td>

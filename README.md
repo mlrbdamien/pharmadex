@@ -65,6 +65,29 @@ déconnecter. Le mot de passe est connu de l'équipe : c'est acceptable ici, où
 l'outil ne contient aucune donnée patient, l'accès reste borné par la RLS, et
 le poste se trouve dans une zone contrôlée.
 
+## 2 bis. Produits (v2) — scan de boîte
+
+La table des produits vient de la liste publique Swissmedic des emballages
+autorisés (« Zugelassene Packungen Humanarzneimittel », mise à jour mensuelle).
+Le GTIN de chaque emballage est calculé : `7680` + n° d'autorisation + code
+d'emballage + clé EAN-13.
+
+- **Import automatique** : workflow `import-products.yml`, le 3 de chaque mois
+  (réutilise le secret `SUPABASE_DB_URL`). Déclenchable à la main via
+  *Run workflow*.
+- **Test local sans base** : `pip install openpyxl` puis
+  `python3 scripts/import_products.py --dry-run`.
+- Un produit retiré du marché n'est jamais supprimé : les boîtes encore en
+  circulation doivent rester scannables.
+- **Liaison** : depuis la fiche produit affichée après un scan, un éditeur peut
+  lier une ressource au produit précis ou à un niveau de sa classe ATC
+  (« M01A » couvre tous les AINS d'un geste).
+- Limite connue : pas de pharmacode (anciens codes 39). Si les douchettes de
+  l'officine en émettent, il faudra la base Refdata.
+
+Source des données : Swissmedic, liste des médicaments autorisés à usage
+humain — données publiques, citées conformément aux conditions d'utilisation.
+
 ## 3. Déployer les Edge Functions
 
 ```bash
