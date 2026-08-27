@@ -9,8 +9,14 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const MAX_BYTES = 512 * 1024;
-const TIMEOUT_MS = 5000;
+// Le titre est toujours dans le <head> : lire 128 Ko suffit largement, et
+// évite d'attendre sur une page lourde.
+const MAX_BYTES = 128 * 1024;
+// 10 s et non 5 : au premier appel de la journée, la fonction démarre à froid
+// et l'initialisation réseau (DNS, TLS) s'ajoute au temps de réponse du site.
+// Le coût d'attendre est nul — la récupération tourne en arrière-plan pendant
+// que l'utilisateur saisit ses tags.
+const TIMEOUT_MS = 10_000;
 
 /**
  * Garde-fou anti-SSRF : la fonction tourne dans l'infrastructure Supabase, une
@@ -114,27 +120,27 @@ Deno.serve(async (request) => {
       return json({ title: null, status: response.status });
     }
 
-    // Le titre est dans les premiers kilo-octets : inutile d'avaler la page.
+    // Décodage au fil de l'eau, en s'arrêtant dès que </title> est passé.
+    //
+    // Le décodeur est réutilisé avec `stream: true` : sans cela, une balise à
+    // cheval sur deux morceaux du flux passerait inaperçue et on avalerait la
+    // page entière — et un caractère accentué coupé en deux serait mal décodé.
     const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
+    const decoder = new TextDecoder();
+    let html = '';
     let size = 0;
+
     while (size < MAX_BYTES) {
       const { done, value } = await reader.read();
       if (done) break;
-      chunks.push(value);
       size += value.length;
-      if (new TextDecoder().decode(value).includes('</title>')) break;
+      html += decoder.decode(value, { stream: true });
+      if (html.includes('</title>')) break;
     }
+    html += decoder.decode();
     await reader.cancel().catch(() => {});
 
-    const merged = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    return json({ title: extractTitle(new TextDecoder().decode(merged)) });
+    return json({ title: extractTitle(html) });
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : 'échec';
     return json({ title: null, error: message });
