@@ -43,7 +43,7 @@ export function Misses() {
     <>
       <EnteteEcran titre="Recherches vides" onMenu={useMenu()} />
       <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
         <h1 className="text-lg font-semibold text-ink">Recherches sans résultat</h1>
         <p className="mt-1 text-sm text-ink-3">
           Ce que l'équipe a cherché sans rien trouver. Chaque ligne est une ressource qui

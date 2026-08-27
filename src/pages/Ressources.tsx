@@ -43,7 +43,7 @@ export function Ressources() {
         }
       />
       <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
           <div className="relative">
             <Search
               className="text-ink-3 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"

@@ -132,7 +132,7 @@ export function ProductPage() {
     <>
       <EnteteEcran titre="Fiche médicament" onMenu={useMenu()} />
       <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-6xl">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -169,7 +169,14 @@ export function ProductPage() {
               </div>
             </section>
 
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-6">
             {/* ---- Notice intégrée ---- */}
+            {notices.length === 0 && (
+              <p className="border-line bg-surface-1 text-ink-3 rounded-card border px-4 py-6 text-center text-sm">
+                Pas de notice AIPS pour ce produit.
+              </p>
+            )}
             {notices.length > 0 && (
               <section>
                 <div className="flex flex-wrap items-center gap-2">
@@ -229,7 +236,7 @@ export function ProductPage() {
                       </div>
                     )}
                     {noticeHtml === null ? (
-                      <div className="border-line bg-surface-1 mt-2 flex h-[32rem] w-full items-center justify-center rounded-lg border">
+                      <div className="border-line bg-surface-1 mt-2 flex h-[32rem] w-full items-center justify-center rounded-lg border xl:h-[44rem]">
                         <Loader2 className="text-ink-3 size-5 animate-spin" />
                       </div>
                     ) : (
@@ -239,7 +246,7 @@ export function ProductPage() {
                         srcDoc={noticeHtml}
                         title={DOC_LABELS[activeDoc.doc_type]}
                         sandbox="allow-same-origin"
-                        className="border-line mt-2 h-[32rem] w-full rounded-lg border bg-white"
+                        className="border-line mt-2 h-[32rem] w-full rounded-lg border bg-white xl:h-[44rem]"
                       />
                     )}
                     <p className="mt-1 text-xs text-ink-3">
@@ -250,6 +257,9 @@ export function ProductPage() {
               </section>
             )}
 
+            </div>
+
+            <div className="min-w-0 space-y-6">
             {/* ---- Ressources liées ---- */}
             <section>
               <div className="mb-2 flex items-center justify-between">
@@ -370,6 +380,8 @@ export function ProductPage() {
                 </div>
               </section>
             )}
+            </div>
+            </div>
           </div>
         )}
         </div>

@@ -85,7 +85,7 @@ export function Medicaments() {
         onMenu={useMenu()}
       />
       <main className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-5xl">
           <div className="relative">
             <Search
               className="text-ink-3 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -144,7 +144,10 @@ export function Medicaments() {
                   >
                     <Pill size={15} className="text-accent shrink-0" aria-hidden />
                     <span className="text-ink min-w-0 flex-1 truncate text-[15px]">{product.name}</span>
-                    <span className="text-ink-3 hidden max-w-40 shrink-0 truncate text-[13px] lg:inline">
+                    <span className="text-ink-3 hidden w-64 shrink-0 truncate text-[13px] lg:inline">
+                      {product.substances}
+                    </span>
+                    <span className="text-ink-3 hidden w-40 shrink-0 truncate text-right text-[13px] xl:inline">
                       {product.company}
                     </span>
                     {product.atc_code && (

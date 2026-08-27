@@ -59,20 +59,41 @@ export type NoticeShortcut = {
 
 /**
  * Raccourcis de rubriques affichés au-dessus de la notice intégrée : un clic
- * fait défiler l'iframe jusqu'à la rubrique.
+ * fait défiler jusqu'à la rubrique.
  *
- * Les notices HTML de l'AIPS portent des ancres #section1…#section21 suivant
- * l'ordre standardisé des rubriques. Pour la FI (SmPC), l'ordre usuel est :
- * 1 nom · 2 composition · 3 forme · 4 indications · 5 posologie ·
- * 6 contre-indications · 7 mises en garde · 8 interactions ·
- * 9 grossesse/allaitement · 10 conduite · 11 effets indésirables ·
- * 12 surdosage · … La notice patient (PIL) suit une autre numérotation.
+ * Numérotation VÉRIFIÉE sur les documents réels (deux FI et deux notices
+ * patient concordantes) — elle diffère de l'ordre théorique des rubriques :
+ * les FI commencent à #section1 = Composition.
+ *
+ * FI (SmPC) : 1 composition · 2 forme · 3 indications · 4 posologie ·
+ * 5 contre-indications · 6 mises en garde · 7 interactions · 8 grossesse/
+ * allaitement · 9 conduite · 10 effets indésirables · 11 surdosage.
+ * Les instructions pour patients particuliers (âge, insuffisances) sont une
+ * sous-rubrique de la posologie, sans ancre propre.
+ *
+ * Notice patient (PIL) : 2 qu'est-ce/indications · 4 quand ne pas prendre ·
+ * 5 précautions · 6 grossesse/allaitement · 7 comment utiliser ·
+ * 8 effets secondaires · 10 composition.
  */
 export const NOTICE_SHORTCUTS: Record<'SmPC' | 'PIL', NoticeShortcut[]> = {
-  // TODO(human) : choisir les rubriques qui méritent un accès en un clic au
-  // comptoir, leurs libellés et leurs ancres — version minimale en attendant.
   SmPC: [
-    { label: 'Grossesse / allaitement', anchor: 'section9' },
+    { label: 'Composition', anchor: 'section1' },
+    { label: 'Indications', anchor: 'section3' },
+    { label: 'Posologie', anchor: 'section4' },
+    { label: 'Contre-indications', anchor: 'section5' },
+    { label: 'Mises en garde', anchor: 'section6' },
+    { label: 'Interactions', anchor: 'section7' },
+    { label: 'Grossesse / allaitement', anchor: 'section8' },
+    { label: 'Effets indésirables', anchor: 'section10' },
+    { label: 'Surdosage', anchor: 'section11' },
   ],
-  PIL: [],
+  PIL: [
+    { label: 'Indications', anchor: 'section2' },
+    { label: 'Contre-indications', anchor: 'section4' },
+    { label: 'Précautions', anchor: 'section5' },
+    { label: 'Grossesse / allaitement', anchor: 'section6' },
+    { label: 'Posologie', anchor: 'section7' },
+    { label: 'Effets secondaires', anchor: 'section8' },
+    { label: 'Composition', anchor: 'section10' },
+  ],
 };
