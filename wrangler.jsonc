@@ -1,0 +1,14 @@
+{
+  // Worker « fichiers statiques » : aucun code serveur, Cloudflare se contente
+  // de servir le contenu de dist/ produit par `npm run build`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pharmadex",
+  "compatibility_date": "2026-08-27",
+  "assets": {
+    "directory": "./dist",
+    // Pharmadex est une application à page unique : le routage se fait dans le
+    // navigateur. Sans ceci, un rechargement sur /recherches-vides chercherait
+    // un fichier de ce nom et renverrait un 404.
+    "not_found_handling": "single-page-application"
+  }
+}
