@@ -78,8 +78,11 @@ Dashboard Cloudflare > **Workers & Pages** > **Create** > **Pages** >
 Variables d'environnement (production **et** preview) :
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
-`public/_redirects` renvoie toutes les routes vers `index.html` — sans ce fichier,
-un rechargement sur `/recherches-vides` donnerait un 404.
+Le repli de routage est assuré par `not_found_handling: "single-page-application"`
+dans `wrangler.jsonc` — sans lui, un rechargement sur `/recherches-vides` donnerait
+un 404. Ne pas y ajouter de `public/_redirects` : la règle `/* → /index.html` est
+rejetée par le validateur Workers, qui y voit une boucle infinie une fois les
+chemins normalisés.
 
 ## 5. Secrets GitHub
 
