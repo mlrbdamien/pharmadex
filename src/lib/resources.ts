@@ -196,14 +196,34 @@ export async function fetchTitle(url: string): Promise<string | null> {
 /**
  * Décide si un terme resté sans résultat mérite d'être consigné.
  *
- * Appelée uniquement après 700 ms sans frappe, avec 0 résultat, sur un terme
- * déjà trimé. `lastLogged` est le dernier terme consigné dans cette session
- * (null au démarrage).
+ * Appelée uniquement après 2 s sans frappe, avec 0 résultat côté serveur, sur
+ * un terme déjà trimé. `lastLogged` est le dernier terme consigné dans cette
+ * session (null au démarrage).
+ *
+ * Le délai écarte déjà l'essentiel des états intermédiaires de frappe ; cette
+ * fonction rattrape ce qui passe au travers.
  */
 export function shouldLogMiss(term: string, lastLogged: string | null): boolean {
-  // TODO(human) : remplacer cette règle provisoire, qui consigne chaque état
-  // intermédiaire de la frappe (« gro », « gross », « grossess »…).
-  return term !== lastLogged;
+  // Un code-barres arrive d'un bloc, jamais lettre par lettre : aucune raison
+  // de le filtrer, et c'est la matière première de la v2 « produits ».
+  if (/^[0-9]{8,14}$/.test(term)) return true;
+
+  // Plus exigeant que le garde-fou SQL (3) : au comptoir, un besoin réel fait
+  // rarement moins de quatre caractères.
+  if (term.length < 4) return false;
+  if (!lastLogged) return true;
+
+  const current = term.toLowerCase();
+  const previous = lastLogged.toLowerCase();
+
+  // « grossesse » puis « grossesse alcool » : une seule recherche qui se
+  // précise, pas deux besoins distincts. On n'en garde qu'un.
+  //
+  // Le terme retenu est le plus court des deux, faute de pouvoir revenir en
+  // arrière (le compte comptoir n'a pas le droit de supprimer). Avec le délai
+  // de 2 s en amont, le cas est devenu rare : il faut une pause franche en
+  // plein milieu d'une saisie pour le déclencher.
+  return !current.startsWith(previous) && !previous.startsWith(current);
 }
 
 export async function logSearchMiss(term: string): Promise<void> {

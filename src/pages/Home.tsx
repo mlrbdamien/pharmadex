@@ -59,8 +59,13 @@ export function Home() {
     [base, activeTag],
   );
 
-  // Journal des recherches vides. On attend la réponse serveur (`remote`) :
-  // consigner sur la foi du seul cache local produirait de faux négatifs.
+  // Journal des recherches vides. Deux conditions avant de consigner :
+  //
+  // 1. la réponse serveur est arrivée et est vide (`remote`) — se fier au seul
+  //    cache local produirait de faux négatifs ;
+  // 2. deux secondes sans frappe. Ce délai fait l'essentiel du travail : une
+  //    hésitation au milieu d'un mot dure quelques centaines de millisecondes,
+  //    pas deux secondes. Ce qui reste est un terme abouti, pas « gross ».
   useEffect(() => {
     if (!trimmed || remote === null || remote.length > 0) return;
     const timer = setTimeout(() => {
@@ -68,7 +73,7 @@ export function Home() {
         lastLogged.current = trimmed;
         void logSearchMiss(trimmed);
       }
-    }, 700);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [trimmed, remote]);
 
