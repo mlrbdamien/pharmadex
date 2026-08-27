@@ -5,12 +5,11 @@ import {
   CalendarCheck,
   ExternalLink,
   FileText,
-  Info,
   Pin,
   PinOff,
 } from 'lucide-react';
 import type { Resource } from '../lib/types';
-import { markVerified, openResource, togglePinned } from '../lib/resources';
+import { markVerified, togglePinned } from '../lib/resources';
 import { formatDate, formatSize, hostname } from '../lib/format';
 
 type Props = {
@@ -42,11 +41,9 @@ export function ResourceCard({ resource, canEdit, onTagClick, onChanged, first }
                   transition hover:border-teal-300 hover:shadow
                   ${first ? 'border-teal-400 ring-1 ring-teal-200' : 'border-slate-200'}`}
     >
-      <button
-        type="button"
-        onClick={() => void openResource(resource)}
-        className="min-w-0 flex-1 text-left"
-      >
+      {/* Le clic ouvre la fiche — décision produit du 27.08.2026. Le bouton
+          « Ouvrir » de la fiche mène ensuite au lien ou au fichier. */}
+      <Link to={`/r/${resource.id}`} className="min-w-0 flex-1 text-left">
         <div className="flex items-center gap-2">
           {isFile ? (
             <FileText className="size-4 shrink-0 text-slate-400" aria-hidden />
@@ -81,7 +78,7 @@ export function ResourceCard({ resource, canEdit, onTagClick, onChanged, first }
           {resource.verified_on && <span>vérifié le {formatDate(resource.verified_on)}</span>}
           {resource.owner && <span>{resource.owner}</span>}
         </p>
-      </button>
+      </Link>
 
       <div className="flex shrink-0 flex-col items-end gap-1">
         <div className="flex flex-wrap justify-end gap-1">
@@ -121,15 +118,6 @@ export function ResourceCard({ resource, canEdit, onTagClick, onChanged, first }
               </button>
             </>
           )}
-          {/* La fiche s'ouvre par ce geste secondaire — le clic principal
-              continue d'ouvrir la cible : le chemin comptoir ne change pas. */}
-          <Link
-            to={`/r/${resource.id}`}
-            title="Fiche de la ressource"
-            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-teal-700"
-          >
-            <Info className="size-4" />
-          </Link>
         </div>
       </div>
     </article>

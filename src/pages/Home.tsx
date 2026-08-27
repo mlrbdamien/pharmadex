@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, SearchX } from 'lucide-react';
 import { Header } from '../components/Header';
 import { SearchBar } from '../components/SearchBar';
@@ -10,11 +10,10 @@ import { useStore } from '../lib/store';
 import {
   localFilter,
   logSearchMiss,
-  openResource,
   searchResources,
   shouldLogMiss,
 } from '../lib/resources';
-import { normalizeScannedCode, productHit, scanGtin, searchProducts } from '../lib/products';
+import { normalizeScannedCode, scanGtin, searchProducts } from '../lib/products';
 import { ProductCard } from '../components/ProductCard';
 import { Pill } from 'lucide-react';
 import type { ProductRow, Resource, ScanHit } from '../lib/types';
@@ -81,27 +80,14 @@ export function Home() {
     return () => clearTimeout(timer);
   }, [trimmed]);
 
-  const selectProduct = useCallback((authorizationNr: string) => {
-    void productHit(authorizationNr).then((hit) => {
-      if (!hit) return;
-      setScan(hit);
-      setProductMatches([]);
-      setRemote(hit.resources as Resource[]);
-    });
-  }, []);
-
   const rescan = useCallback(() => {
     const code = normalizeScannedCode(trimmed);
-    if (code) {
-      void scanGtin(code).then((hit) => {
-        setScan(hit);
-        setRemote(hit ? (hit.resources as Resource[]) : []);
-      });
-    } else if (scan) {
-      // Fiche ouverte depuis la recherche par nom : recharger par n° d'autorisation.
-      selectProduct(scan.product.authorization_nr);
-    }
-  }, [trimmed, scan, selectProduct]);
+    if (!code) return;
+    void scanGtin(code).then((hit) => {
+      setScan(hit);
+      setRemote(hit ? (hit.resources as Resource[]) : []);
+    });
+  }, [trimmed]);
 
   const base = useMemo(
     () => remote ?? localFilter(resources, trimmed),
@@ -133,16 +119,15 @@ export function Home() {
     return () => clearTimeout(timer);
   }, [trimmed, remote, scan, productMatches]);
 
-  // Entrée ouvre le premier résultat : scan de code-barres → Entrée → la fiche
-  // s'ouvre, sans toucher la souris.
+  // Entrée ouvre la fiche du premier résultat — même geste que le clic.
   const openFirst = useCallback(() => {
     const first = results[0];
     if (first) {
-      void openResource(first);
+      navigate(`/r/${first.id}`);
       return;
     }
-    if (productMatches[0]) selectProduct(productMatches[0].authorization_nr);
-  }, [results, productMatches, selectProduct]);
+    if (productMatches[0]) navigate(`/p/${productMatches[0].authorization_nr}`);
+  }, [results, productMatches, navigate]);
 
   const pinned = results.filter((r) => r.pinned);
   const rest = results.filter((r) => !r.pinned);
@@ -194,10 +179,9 @@ export function Home() {
               {!scan && productMatches.length > 0 && (
                 <div className="rounded-lg border border-slate-200 bg-white">
                   {productMatches.map((product) => (
-                    <button
+                    <Link
                       key={product.authorization_nr}
-                      type="button"
-                      onClick={() => selectProduct(product.authorization_nr)}
+                      to={`/p/${product.authorization_nr}`}
                       className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2
                                  text-left text-sm last:border-0 hover:bg-teal-50"
                     >
@@ -210,7 +194,7 @@ export function Home() {
                           {product.atc_code}
                         </span>
                       )}
-                    </button>
+                    </Link>
                   ))}
                 </div>
               )}

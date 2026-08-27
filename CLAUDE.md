@@ -70,8 +70,11 @@ ouvrir » va dans le mauvais sens.
   ne fournit que des URLs vers files.refdata.ch — AUCUN contenu n'est copié),
   emballages, produits de même classe, liaisons avec déliage.
 - Fiche ressource `/r/:id` (vue, tous) ; l'édition vit sur `/r/:id/modifier`.
-- Chemin comptoir intangible : le clic principal d'une carte ressource ouvre
-  la CIBLE ; la fiche s'ouvre par l'icône info. Ne jamais inverser.
+- **Cliquer ouvre la fiche** (ressource comme produit) — décision produit de
+  Damien du 27.08.2026, qui a explicitement écarté l'optimisation « clic =
+  cible directe ». Le bouton « Ouvrir » de la fiche mène au lien/fichier.
+  Entrée dans la recherche suit la même logique (fiche du premier résultat).
+  Ne pas revenir en arrière sans demande explicite.
 - `NOTICE_SHORTCUTS` (src/lib/notices.ts) : rubriques en un clic, savoir de
   pharmacien — ancres #sectionN standardisées des notices.
 
