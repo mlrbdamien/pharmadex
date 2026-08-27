@@ -1,13 +1,18 @@
 import { supabase } from './supabase';
 
 /**
- * URL de consultation d'une notice, via le relais fetch-notice.
- * files.refdata.ch sert ses HTML en application/octet-stream : sans relais
- * qui rétablit text/html, l'iframe reste blanche.
+ * Rapporte le HTML d'une notice via l'Edge Function fetch-notice.
+ * files.refdata.ch n'expose pas de CORS, et la passerelle Supabase interdit
+ * de SERVIR du HTML rendu : l'application récupère donc le texte et le rend
+ * elle-même (iframe srcdoc). Null en cas d'échec — la fiche reste utilisable.
  */
-export function noticeViewUrl(htmlUrl: string): string {
+export async function fetchNoticeHtml(htmlUrl: string): Promise<string | null> {
   const doc = htmlUrl.split('/').pop() ?? '';
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-notice?doc=${encodeURIComponent(doc)}`;
+  const { data, error } = await supabase.functions.invoke<string>('fetch-notice', {
+    body: { doc },
+  });
+  if (error || typeof data !== 'string') return null;
+  return data;
 }
 
 export type Notice = {

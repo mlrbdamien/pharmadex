@@ -11,6 +11,6 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.fetch-notice]
-# Servie à une iframe, qui ne peut pas envoyer de JWT. Le relais est borné par
-# une expression stricte aux documents de notices Refdata, qui sont publics.
-verify_jwt = false
+# Appelée via supabase.functions.invoke (JWT fourni) : accès réservé aux
+# utilisateurs connectés, comme fetch-title.
+verify_jwt = true

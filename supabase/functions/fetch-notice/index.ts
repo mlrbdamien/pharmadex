@@ -1,36 +1,48 @@
-// Relais de notices AIPS.
+// Récupération d'une notice AIPS pour affichage dans l'application.
 //
-// files.refdata.ch sert les notices HTML avec Content-Type:
-// application/octet-stream — un navigateur refuse donc de les RENDRE dans une
-// iframe (il voudrait les télécharger). Ce relais re-sert le même document
-// avec le bon type. Il ne relaie RIEN d'autre : le chemin est validé par une
-// expression stricte, et ces documents sont de toute façon publics.
+// files.refdata.ch n'expose pas de CORS : le navigateur ne peut pas y accéder
+// directement. Cette fonction rapporte le document ; l'application le rend
+// elle-même (iframe srcdoc) — la passerelle Supabase interdisant de servir du
+// text/html rendu depuis son domaine, le Content-Type importe peu ici.
 //
-// verify_jwt = false (config.toml) : une iframe ne peut pas envoyer de jeton.
+// verify_jwt = true : appelée via supabase.functions.invoke, JWT fourni.
 
 const ALLOWED = /^[a-f0-9]{16,64}-(de|fr|it|en)\.html$/;
 const BASE = 'https://files.refdata.ch/simis-public-prod/MedicinalDocuments/';
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 Deno.serve(async (request) => {
-  const doc = new URL(request.url).searchParams.get('doc') ?? '';
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+
+  let doc = '';
+  try {
+    doc = String((await request.json()).doc ?? '');
+  } catch {
+    /* corps absent */
+  }
   if (!ALLOWED.test(doc)) {
-    return new Response('document non autorisé', { status: 400 });
+    return new Response(JSON.stringify({ error: 'document non autorisé' }), {
+      status: 400,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
 
   const upstream = await fetch(BASE + doc, {
     headers: { 'User-Agent': 'Pharmadex/1.0 (+relais de notices)' },
   });
   if (!upstream.ok) {
-    return new Response('notice indisponible', { status: upstream.status });
+    return new Response(JSON.stringify({ error: 'notice indisponible' }), {
+      status: 502,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
 
-  return new Response(upstream.body, {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      // Une notice change rarement : un jour de cache évite de re-traverser
-      // le relais à chaque consultation au comptoir.
-      'Cache-Control': 'public, max-age=86400',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data: https://files.refdata.ch",
-    },
+  return new Response(await upstream.text(), {
+    headers: { ...CORS, 'Content-Type': 'text/plain; charset=utf-8' },
   });
 });

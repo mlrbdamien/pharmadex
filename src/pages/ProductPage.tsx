@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, FileText, Link2, Loader2, Pill, Unlink } from 'lucide-react';
 import { ResourceCard } from '../components/ResourceCard';
@@ -15,7 +15,7 @@ import {
 } from '../lib/products';
 import type { LinkDetail, PackageRow } from '../lib/products';
 import type { ProductRow } from '../lib/types';
-import { bestByType, listNotices, noticeViewUrl, NOTICE_SHORTCUTS } from '../lib/notices';
+import { bestByType, fetchNoticeHtml, listNotices, NOTICE_SHORTCUTS } from '../lib/notices';
 import type { Notice } from '../lib/notices';
 import type { Resource, ScanHit } from '../lib/types';
 
@@ -43,7 +43,9 @@ export function ProductPage() {
   const [generics, setGenerics] = useState<ProductRow[]>([]);
   const [links, setLinks] = useState<LinkDetail | null>(null);
   const [activeDoc, setActiveDoc] = useState<Notice | null>(null);
+  const [noticeHtml, setNoticeHtml] = useState<string | null>(null);
   const [anchor, setAnchor] = useState('');
+  const noticeFrame = useRef<HTMLIFrameElement>(null);
   const [linking, setLinking] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -80,6 +82,29 @@ export function ProductPage() {
     setAnchor('');
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setNoticeHtml(null);
+    setAnchor('');
+    if (!activeDoc) return;
+    let cancelled = false;
+    void fetchNoticeHtml(activeDoc.html_url).then((html) => {
+      if (!cancelled) setNoticeHtml(html);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeDoc]);
+
+  // Défile l'iframe jusqu'à la rubrique. `allow-same-origin` sans
+  // `allow-scripts` : aucun script de la notice ne s'exécute, mais NOUS
+  // pouvons piloter son défilement depuis l'application.
+  useEffect(() => {
+    if (!anchor) return;
+    noticeFrame.current?.contentDocument
+      ?.getElementById(anchor)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [anchor, noticeHtml]);
 
   async function unlink(resource: Resource) {
     if (!nr || !links) return;
@@ -203,17 +228,20 @@ export function ProductPage() {
                         ))}
                       </div>
                     )}
-                    <iframe
-                      key={`${activeDoc.html_url}#${anchor}`}
-                      src={
-                        anchor
-                          ? `${noticeViewUrl(activeDoc.html_url)}#${anchor}`
-                          : noticeViewUrl(activeDoc.html_url)
-                      }
-                      title={DOC_LABELS[activeDoc.doc_type]}
-                      sandbox=""
-                      className="mt-2 h-[32rem] w-full rounded-lg border border-line bg-surface-1"
-                    />
+                    {noticeHtml === null ? (
+                      <div className="border-line bg-surface-1 mt-2 flex h-[32rem] w-full items-center justify-center rounded-lg border">
+                        <Loader2 className="text-ink-3 size-5 animate-spin" />
+                      </div>
+                    ) : (
+                      <iframe
+                        ref={noticeFrame}
+                        key={activeDoc.html_url}
+                        srcDoc={noticeHtml}
+                        title={DOC_LABELS[activeDoc.doc_type]}
+                        sandbox="allow-same-origin"
+                        className="border-line mt-2 h-[32rem] w-full rounded-lg border bg-white"
+                      />
+                    )}
                     <p className="mt-1 text-xs text-ink-3">
                       Source : AIPS / Refdata — document officiel, à titre consultatif.
                     </p>
