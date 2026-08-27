@@ -18,6 +18,9 @@ export type ResourceDraft = Pick<
 
 export type SearchMiss = Tables['search_misses']['Row'];
 
+/** Ligne brute de la table products (résultat de search_products). */
+export type ProductRow = Tables['products']['Row'];
+
 /** Produit Swissmedic identifié par un scan. */
 export type Product = {
   authorization_nr: string;

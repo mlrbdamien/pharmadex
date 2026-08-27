@@ -56,7 +56,11 @@ ouvrir » va dans le mauvais sens.
 - Liaison à deux niveaux : `product_resources` (produit précis) et
   `atc_resources` (préfixe de classe ATC — le vrai levier). La RPC
   `scan_gtin` renvoie l'union des deux.
-- Un scan qui identifie un produit n'est JAMAIS consigné en recherche vide.
+- Les produits sont aussi cherchables PAR NOM et par principe actif
+  (`search_products`, migration 0004) : cliquer un résultat produit ouvre la
+  même fiche qu'un scan (`product_hit`, partagé avec `scan_gtin`).
+- Un scan ou une recherche qui identifie un produit n'est JAMAIS consigné en
+  recherche vide.
 - `products`/`packages` : aucune policy d'écriture, remplies par l'import
   (service_role) uniquement.
 

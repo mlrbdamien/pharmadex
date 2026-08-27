@@ -14,9 +14,10 @@ import {
   searchResources,
   shouldLogMiss,
 } from '../lib/resources';
-import { normalizeScannedCode, scanGtin } from '../lib/products';
+import { normalizeScannedCode, productHit, scanGtin, searchProducts } from '../lib/products';
 import { ProductCard } from '../components/ProductCard';
-import type { Resource, ScanHit } from '../lib/types';
+import { Pill } from 'lucide-react';
+import type { ProductRow, Resource, ScanHit } from '../lib/types';
 
 export function Home() {
   const { canEdit } = useAuth();
@@ -29,6 +30,8 @@ export function Home() {
   const [remote, setRemote] = useState<Resource[] | null>(null);
   /** Fiche produit quand la saisie est un code scanné reconnu. */
   const [scan, setScan] = useState<ScanHit | null>(null);
+  /** Produits dont le nom correspond à la saisie texte. */
+  const [productMatches, setProductMatches] = useState<ProductRow[]>([]);
 
   const lastLogged = useRef<string | null>(null);
   const requestId = useRef(0);
@@ -43,6 +46,7 @@ export function Home() {
     if (!trimmed) {
       setRemote(null);
       setScan(null);
+      setProductMatches([]);
       return;
     }
     setRemote(null);
@@ -55,12 +59,20 @@ export function Home() {
           const hit = await scanGtin(code);
           if (id !== requestId.current) return;
           setScan(hit);
+          setProductMatches([]);
           // Code inconnu de Swissmedic : la recherche texte n'a aucune chance,
           // on la laisse s'afficher vide pour que le journal le consigne.
           setRemote(hit ? (hit.resources as Resource[]) : []);
         } else {
-          const rows = await searchResources(trimmed);
-          if (id === requestId.current) setRemote(rows);
+          // Ressources ET produits, en parallèle : « Inderal » au clavier
+          // vaut un scan de la boîte.
+          const [rows, prods] = await Promise.all([
+            searchResources(trimmed),
+            searchProducts(trimmed),
+          ]);
+          if (id !== requestId.current) return;
+          setRemote(rows);
+          setProductMatches(prods);
         }
       } catch {
         // Le filtre local reste affiché — mieux que rien au comptoir.
@@ -69,14 +81,27 @@ export function Home() {
     return () => clearTimeout(timer);
   }, [trimmed]);
 
+  const selectProduct = useCallback((authorizationNr: string) => {
+    void productHit(authorizationNr).then((hit) => {
+      if (!hit) return;
+      setScan(hit);
+      setProductMatches([]);
+      setRemote(hit.resources as Resource[]);
+    });
+  }, []);
+
   const rescan = useCallback(() => {
     const code = normalizeScannedCode(trimmed);
-    if (!code) return;
-    void scanGtin(code).then((hit) => {
-      setScan(hit);
-      setRemote(hit ? (hit.resources as Resource[]) : []);
-    });
-  }, [trimmed]);
+    if (code) {
+      void scanGtin(code).then((hit) => {
+        setScan(hit);
+        setRemote(hit ? (hit.resources as Resource[]) : []);
+      });
+    } else if (scan) {
+      // Fiche ouverte depuis la recherche par nom : recharger par n° d'autorisation.
+      selectProduct(scan.product.authorization_nr);
+    }
+  }, [trimmed, scan, selectProduct]);
 
   const base = useMemo(
     () => remote ?? localFilter(resources, trimmed),
@@ -98,6 +123,7 @@ export function Home() {
   //    pas deux secondes. Ce qui reste est un terme abouti, pas « gross ».
   useEffect(() => {
     if (!trimmed || remote === null || remote.length > 0 || scan !== null) return;
+    if (productMatches.length > 0) return; // un produit trouvé est une réponse
     const timer = setTimeout(() => {
       if (shouldLogMiss(trimmed, lastLogged.current)) {
         lastLogged.current = trimmed;
@@ -105,14 +131,18 @@ export function Home() {
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [trimmed, remote, scan]);
+  }, [trimmed, remote, scan, productMatches]);
 
   // Entrée ouvre le premier résultat : scan de code-barres → Entrée → la fiche
   // s'ouvre, sans toucher la souris.
   const openFirst = useCallback(() => {
     const first = results[0];
-    if (first) void openResource(first);
-  }, [results]);
+    if (first) {
+      void openResource(first);
+      return;
+    }
+    if (productMatches[0]) selectProduct(productMatches[0].authorization_nr);
+  }, [results, productMatches, selectProduct]);
 
   const pinned = results.filter((r) => r.pinned);
   const rest = results.filter((r) => !r.pinned);
@@ -159,8 +189,31 @@ export function Home() {
             <Loader2 className="size-4 animate-spin" /> Chargement…
           </p>
         ) : trimmed ? (
-          scan || results.length > 0 ? (
+          scan || results.length > 0 || productMatches.length > 0 ? (
             <div className="mt-4 space-y-2">
+              {!scan && productMatches.length > 0 && (
+                <div className="rounded-lg border border-slate-200 bg-white">
+                  {productMatches.map((product) => (
+                    <button
+                      key={product.authorization_nr}
+                      type="button"
+                      onClick={() => selectProduct(product.authorization_nr)}
+                      className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2
+                                 text-left text-sm last:border-0 hover:bg-teal-50"
+                    >
+                      <Pill className="size-4 shrink-0 text-teal-600" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                        {product.name}
+                      </span>
+                      {product.atc_code && (
+                        <span className="shrink-0 font-mono text-xs text-slate-400">
+                          {product.atc_code}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
               {scan && (
                 <ProductCard
                   product={scan.product}

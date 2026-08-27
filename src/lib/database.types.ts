@@ -105,6 +105,11 @@ export type Database = {
     Functions: {
       search_resources: { Args: { q: string }; Returns: ResourceRow[] };
       scan_gtin: { Args: { code: string }; Returns: unknown };
+      product_hit: { Args: { auth: string }; Returns: unknown };
+      search_products: {
+        Args: { q: string };
+        Returns: Database['public']['Tables']['products']['Row'][];
+      };
       resolve_codes: {
         Args: { codes: string[] };
         Returns: { code: string; name: string }[];

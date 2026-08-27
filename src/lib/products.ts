@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { ScanHit } from './types';
+import type { ProductRow, ScanHit } from './types';
 
 /**
  * Détecte si la saisie ressemble à un code scanné plutôt qu'à du texte.
@@ -37,6 +37,24 @@ export function normalizeScannedCode(raw: string): string | null {
 /** Scan → produit + ressources liées. Null si le code est inconnu. */
 export async function scanGtin(code: string): Promise<ScanHit | null> {
   const { data, error } = await supabase.rpc('scan_gtin', { code });
+  if (error) throw error;
+  return (data as ScanHit | null) ?? null;
+}
+
+/**
+ * Produits dont le nom ou le principe actif correspond à la saisie.
+ * « Inderal » au clavier vaut un scan de la boîte — et « propranolol »
+ * trouve aussi les génériques.
+ */
+export async function searchProducts(q: string): Promise<ProductRow[]> {
+  const { data, error } = await supabase.rpc('search_products', { q });
+  if (error) return [];
+  return data ?? [];
+}
+
+/** Fiche complète d'un produit (même forme qu'un scan, conditionnement en moins). */
+export async function productHit(authorizationNr: string): Promise<ScanHit | null> {
+  const { data, error } = await supabase.rpc('product_hit', { auth: authorizationNr });
   if (error) throw error;
   return (data as ScanHit | null) ?? null;
 }
