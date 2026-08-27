@@ -147,7 +147,7 @@ export function ResourceForm() {
       <main className="mx-auto max-w-xl px-4 py-6">
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1)}
           className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
         >
           <ArrowLeft className="size-4" /> Retour

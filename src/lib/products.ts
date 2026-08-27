@@ -26,8 +26,9 @@ export function looksLikeScan(raw: string): boolean {
  *    caractère GS (\x1d) ou un ']d2' d'en-tête de symbologie.
  */
 export function normalizeScannedCode(raw: string): string | null {
-  // TODO(human) : implémentation à valider douchette en main — la version
-  // ci-dessous ne couvre que les cas EAN-13 et GTIN-14 nus.
+  // À VALIDER douchette en main (test : scanner une boîte dans la barre de
+  // recherche) — la version ci-dessous ne couvre que les cas EAN-13 et
+  // GTIN-14 nus, pas les trames GS1 DataMatrix décrites ci-dessus.
   const digits = raw.replace(/\D/g, '');
   if (digits.length === 13) return digits;
   if (digits.length === 14 && digits.startsWith('0')) return digits.slice(1);
@@ -106,10 +107,102 @@ export function atcLevels(atc: string): string[] {
   return cuts.filter((n) => atc.length >= n).map((n) => atc.slice(0, n));
 }
 
-/** Résolution groupée code → nom de produit, pour le journal. */
-export async function resolveCodes(codes: string[]): Promise<Map<string, string>> {
+/** Résolution groupée code → produit, pour le journal (nom + lien de fiche). */
+export async function resolveCodes(
+  codes: string[],
+): Promise<Map<string, { name: string; nr: string }>> {
   if (codes.length === 0) return new Map();
   const { data, error } = await supabase.rpc('resolve_codes', { codes });
   if (error) return new Map();
-  return new Map((data ?? []).map((row) => [row.code, row.name]));
+  return new Map(
+    (data ?? []).map((row) => [row.code, { name: row.name, nr: row.authorization_nr }]),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fiche produit (v3)
+// ---------------------------------------------------------------------------
+
+export type PackageRow = {
+  gtin: string;
+  authorization_nr: string;
+  pack_code: string;
+  description: string | null;
+};
+
+export async function listPackages(authorizationNr: string): Promise<PackageRow[]> {
+  const { data, error } = await supabase
+    .from('packages')
+    .select('gtin,authorization_nr,pack_code,description')
+    .eq('authorization_nr', authorizationNr)
+    .order('pack_code');
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Produits de même code ATC complet : génériques et apparentés directs. */
+export async function listGenerics(atcCode: string, excludeNr: string): Promise<ProductRow[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('atc_code', atcCode)
+    .neq('authorization_nr', excludeNr)
+    .order('name')
+    .limit(30);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type LinkDetail = {
+  /** resource_id → liée directement au produit ? */
+  direct: Set<string>;
+  /** resource_id → préfixes ATC par lesquels elle est liée. */
+  byPrefix: Map<string, string[]>;
+};
+
+/**
+ * Détail des liaisons d'un produit : par quel chemin chaque ressource lui
+ * est-elle rattachée ? Nécessaire pour délier au bon niveau — délier une
+ * liaison de classe depuis la fiche d'UN produit retire la ressource de
+ * toute la classe, l'interface doit le dire.
+ */
+export async function linkDetails(
+  authorizationNr: string,
+  atcCode: string | null,
+): Promise<LinkDetail> {
+  const [direct, prefixes] = await Promise.all([
+    supabase
+      .from('product_resources')
+      .select('resource_id')
+      .eq('authorization_nr', authorizationNr),
+    atcCode
+      ? supabase
+          .from('atc_resources')
+          .select('atc_prefix,resource_id')
+          .in('atc_prefix', atcLevels(atcCode))
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const byPrefix = new Map<string, string[]>();
+  for (const row of prefixes.data ?? []) {
+    const list = byPrefix.get(row.resource_id) ?? [];
+    list.push(row.atc_prefix);
+    byPrefix.set(row.resource_id, list);
+  }
+  return {
+    direct: new Set((direct.data ?? []).map((row) => row.resource_id)),
+    byPrefix,
+  };
+}
+
+export type ResourceLinks = {
+  products: { authorization_nr: string; name: string }[];
+  atc: { prefix: string; product_count: number }[];
+};
+
+/** Le revers : à quoi cette ressource est-elle rattachée ? (fiche ressource) */
+export async function resourceLinks(resourceId: string): Promise<ResourceLinks> {
+  const { data, error } = await supabase.rpc('resource_links', { rid: resourceId });
+  if (error) throw error;
+  return (data as ResourceLinks) ?? { products: [], atc: [] };
 }

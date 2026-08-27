@@ -88,6 +88,20 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      notices: {
+        Row: {
+          authorization_nr: string;
+          doc_type: string;
+          lang: string;
+          description: string | null;
+          html_url: string;
+          pdf_url: string | null;
+          updated_on: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       search_misses: {
         Row: {
           term: string;
@@ -112,8 +126,9 @@ export type Database = {
       };
       resolve_codes: {
         Args: { codes: string[] };
-        Returns: { code: string; name: string }[];
+        Returns: { code: string; name: string; authorization_nr: string }[];
       };
+      resource_links: { Args: { rid: string }; Returns: unknown };
       log_search_miss: { Args: { q: string }; Returns: undefined };
       is_allowed: { Args: Record<never, never>; Returns: boolean };
       can_edit: { Args: Record<never, never>; Returns: boolean };

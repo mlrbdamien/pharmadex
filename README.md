@@ -85,8 +85,14 @@ d'emballage + clé EAN-13.
 - Limite connue : pas de pharmacode (anciens codes 39). Si les douchettes de
   l'officine en émettent, il faudra la base Refdata.
 
-Source des données : Swissmedic, liste des médicaments autorisés à usage
-humain — données publiques, citées conformément aux conditions d'utilisation.
+**Notices (v3)** : le même workflow indexe le catalogue AIPS (~29 000 liens
+vers les notices HTML/PDF hébergées par Refdata — aucun contenu n'est copié).
+La fiche produit (`/p/<n° d'autorisation>`) intègre la notice en iframe, avec
+raccourcis de rubriques. Test local : `python3 scripts/import_notices.py --dry-run`.
+
+Sources des données : Swissmedic (liste des médicaments autorisés à usage
+humain) et AIPS/Refdata (notices) — données publiques, consultatives, utilisées
+conformément à leurs conditions.
 
 ## 3. Déployer les Edge Functions
 

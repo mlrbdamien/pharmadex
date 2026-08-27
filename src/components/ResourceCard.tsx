@@ -5,7 +5,7 @@ import {
   CalendarCheck,
   ExternalLink,
   FileText,
-  Pencil,
+  Info,
   Pin,
   PinOff,
 } from 'lucide-react';
@@ -98,35 +98,39 @@ export function ResourceCard({ resource, canEdit, onTagClick, onChanged, first }
           ))}
         </div>
 
-        {canEdit && (
-          <div className="flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(() => markVerified(resource.id))}
-              title="Marquer comme vérifiée aujourd'hui"
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-teal-700"
-            >
-              <CalendarCheck className="size-4" />
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(() => togglePinned(resource.id, !resource.pinned))}
-              title={resource.pinned ? 'Désépingler' : 'Épingler'}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-amber-600"
-            >
-              {resource.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
-            </button>
-            <Link
-              to={`/r/${resource.id}`}
-              title="Modifier"
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-teal-700"
-            >
-              <Pencil className="size-4" />
-            </Link>
-          </div>
-        )}
+        <div className="flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+          {canEdit && (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => markVerified(resource.id))}
+                title="Marquer comme vérifiée aujourd'hui"
+                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-teal-700"
+              >
+                <CalendarCheck className="size-4" />
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => togglePinned(resource.id, !resource.pinned))}
+                title={resource.pinned ? 'Désépingler' : 'Épingler'}
+                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-amber-600"
+              >
+                {resource.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+              </button>
+            </>
+          )}
+          {/* La fiche s'ouvre par ce geste secondaire — le clic principal
+              continue d'ouvrir la cible : le chemin comptoir ne change pas. */}
+          <Link
+            to={`/r/${resource.id}`}
+            title="Fiche de la ressource"
+            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-teal-700"
+          >
+            <Info className="size-4" />
+          </Link>
+        </div>
       </div>
     </article>
   );

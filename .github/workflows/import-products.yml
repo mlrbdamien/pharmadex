@@ -26,6 +26,12 @@ jobs:
           python3 scripts/import_products.py --out-dir /tmp/import
           wc -l /tmp/import/*.csv
 
+      - name: Générer l'index des notices AIPS
+        run: |
+          set -euo pipefail
+          python3 scripts/import_notices.py --out-dir /tmp/import
+          wc -l /tmp/import/notices.csv
+
       - name: Upsert vers Postgres
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -56,10 +62,21 @@ jobs:
           on conflict (gtin) do update
             set authorization_nr = excluded.authorization_nr,
                 pack_code = excluded.pack_code, description = excluded.description;
+
+          create temp table staging_notices (like public.notices);
+          \copy staging_notices from '/import/notices.csv' with (format csv, header true)
+          insert into public.notices
+          select authorization_nr, doc_type, lang, nullif(description,''), html_url,
+                 nullif(pdf_url,''), updated_on
+            from staging_notices
+          on conflict (authorization_nr, doc_type, lang) do update
+            set description = excluded.description, html_url = excluded.html_url,
+                pdf_url = excluded.pdf_url, updated_on = excluded.updated_on;
           commit;
 
           select count(*) as produits_total from public.products;
           select count(*) as emballages_total from public.packages;
+          select count(*) as notices_total from public.notices;
           SQL
 
       - name: Résumé

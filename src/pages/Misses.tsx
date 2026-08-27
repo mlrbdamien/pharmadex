@@ -13,7 +13,7 @@ export function Misses() {
   const [error, setError] = useState<string | null>(null);
   const [hideCodes, setHideCodes] = useState(true);
   /** code scanné → nom du produit, quand Swissmedic le connaît. */
-  const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [names, setNames] = useState<Map<string, { name: string; nr: string }>>(new Map());
 
   async function load() {
     try {
@@ -95,9 +95,12 @@ export function Misses() {
                       <ScanBarcode className="ml-1.5 inline size-3.5 text-slate-300" aria-label="code-barres" />
                     )}
                     {names.has(row.term) && (
-                      <span className="ml-2 font-normal text-slate-400">
-                        {names.get(row.term)}
-                      </span>
+                      <Link
+                        to={`/p/${names.get(row.term)!.nr}`}
+                        className="ml-2 font-normal text-teal-700 hover:underline"
+                      >
+                        {names.get(row.term)!.name}
+                      </Link>
                     )}
                   </td>
                   <td className="py-2 text-right tabular-nums text-slate-600">{row.hits}</td>

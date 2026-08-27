@@ -5,6 +5,8 @@ import { StoreProvider } from './lib/store';
 import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { ResourceForm } from './pages/ResourceForm';
+import { ResourcePage } from './pages/ResourcePage';
+import { ProductPage } from './pages/ProductPage';
 import { Misses } from './pages/Misses';
 
 /** Les routes d'édition n'existent pas pour le compte comptoir (lecture seule). */
@@ -56,8 +58,10 @@ function Gate() {
             </EditorsOnly>
           }
         />
+        <Route path="/r/:id" element={<ResourcePage />} />
+        <Route path="/p/:nr" element={<ProductPage />} />
         <Route
-          path="/r/:id"
+          path="/r/:id/modifier"
           element={
             <EditorsOnly>
               <ResourceForm />

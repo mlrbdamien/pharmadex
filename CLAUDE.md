@@ -64,9 +64,20 @@ ouvrir » va dans le mauvais sens.
 - `products`/`packages` : aucune policy d'écriture, remplies par l'import
   (service_role) uniquement.
 
+## v3 (livrée) — fiches complètes
+
+- Fiche produit `/p/:nr` : notice AIPS intégrée en iframe (le catalogue SIMIS
+  ne fournit que des URLs vers files.refdata.ch — AUCUN contenu n'est copié),
+  emballages, produits de même classe, liaisons avec déliage.
+- Fiche ressource `/r/:id` (vue, tous) ; l'édition vit sur `/r/:id/modifier`.
+- Chemin comptoir intangible : le clic principal d'une carte ressource ouvre
+  la CIBLE ; la fiche s'ouvre par l'icône info. Ne jamais inverser.
+- `NOTICE_SHORTCUTS` (src/lib/notices.ts) : rubriques en un clic, savoir de
+  pharmacien — ancres #sectionN standardisées des notices.
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
-- Import des textes AIPS (notices complètes) — éventuelle v3.
+- Recherche plein texte DANS les notices (elles restent chez Refdata).
 - Refdata / pharmacode, sauf si les douchettes de l'officine l'exigent.
 - Multi-officine, rôles au-delà de `can_edit`, panneau d'administration.
 - **Aucune donnée patient, nulle part** : ne jamais ajouter de champ « notes de
