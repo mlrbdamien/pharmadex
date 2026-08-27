@@ -91,6 +91,8 @@ un rechargement sur `/recherches-vides` donnerait un 404.
 | `CHECK_LINKS_URL` | vérificateur hebdo | `https://<ref>.supabase.co/functions/v1/check-links` |
 | `CHECK_LINKS_SECRET` | vérificateur hebdo | la valeur générée à l'étape 3 |
 
+**Note** : les migrations posent leurs propres `GRANT`, elles fonctionnent donc que « Automatically expose new tables » soit activé ou non.
+
 **Portée de la sauvegarde** : le dump couvre le schéma `public` — ressources,
 tags, allowlist, journal des recherches. Il ne contient **pas** les fichiers
 téléversés dans le Storage ni les comptes Auth. Les PDF importants doivent

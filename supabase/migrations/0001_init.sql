@@ -280,6 +280,33 @@ create policy "search_misses_delete_editor" on public.search_misses
   for delete to authenticated using (public.can_edit());
 
 -- ---------------------------------------------------------------------------
+-- Privilèges.
+--
+-- RLS et GRANT sont deux serrures distinctes : la policy dit QUELLES LIGNES un
+-- rôle peut voir, le GRANT dit s'il a le droit de toucher la table. Supabase
+-- pose ces GRANT automatiquement quand « Automatically expose new tables » est
+-- actif ; les déclarer ici rend la migration indépendante de ce réglage — et
+-- documente au passage qui a le droit de faire quoi.
+--
+-- Rien n'est accordé à `anon` : sans session, l'API ne renvoie rien.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to authenticated;
+
+grant select                         on public.allowed_emails to authenticated;
+grant select, insert, update, delete on public.resources      to authenticated;
+grant select                         on public.tags           to authenticated;
+grant select, delete                 on public.search_misses  to authenticated;
+
+-- `tags` n'apparaît pas en écriture : son alimentation passe uniquement par le
+-- trigger sync_tags(), en SECURITY DEFINER.
+
+grant execute on function public.current_email()          to authenticated;
+grant execute on function public.is_allowed()             to authenticated;
+grant execute on function public.can_edit()               to authenticated;
+grant execute on function public.search_resources(text)   to authenticated;
+grant execute on function public.log_search_miss(text)    to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- Storage : bucket privé, servi en URL signée.
 -- ---------------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
