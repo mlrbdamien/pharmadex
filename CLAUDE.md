@@ -31,8 +31,14 @@ ouvrir » va dans le mauvais sens.
 - **Toute la sécurité repose sur la RLS**, pas sur le front. Les helpers
   `is_allowed()` et `can_edit()` sont en `SECURITY DEFINER` pour éviter une
   récursion infinie dans la policy de `allowed_emails`.
+- **Authentification par mot de passe, sans aucun e-mail.** Choix délibéré : au
+  comptoir, aller chercher un lien dans une boîte mail au milieu d'un conseil
+  est rédhibitoire, et le SMTP intégré de Supabase est limité à quelques envois
+  par heure. Ne pas réintroduire de lien magique ni de réinitialisation par
+  e-mail sans demande explicite — cela ramènerait la dépendance SMTP.
 - **`allowed_emails` n'est pas modifiable depuis l'application.** Ajouter un
-  accès = inviter au dashboard + insérer une ligne en SQL (voir README).
+  accès = créer le compte au dashboard (avec « Auto Confirm User ») + insérer
+  une ligne en SQL (voir README).
 - **Recherche** : configuration Postgres `fr_unaccent` (français + `unaccent`).
   La fonction `search_resources(q)` ajoute `:*` à chaque lexème pour trouver dès
   la frappe, avec un `ilike` en filet. Le front garde toutes les ressources en

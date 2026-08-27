@@ -19,12 +19,8 @@ export const supabase = createClient<Database>(url, key, {
     // Postes partagés au comptoir : la session doit survivre aux redémarrages.
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    // Flux implicite plutôt que PKCE : le vérificateur PKCE vit dans le
-    // localStorage du navigateur qui a DEMANDÉ le lien. Si le mail s'ouvre
-    // ailleurs (Outlook qui lance le navigateur par défaut, lien transféré),
-    // PKCE échoue avec un message incompréhensible. Le flux implicite tolère
-    // ce détour — acceptable ici, l'outil ne contient aucune donnée sensible.
-    flowType: 'implicit',
+    // Aucun jeton ne transite jamais par une URL : l'authentification se fait
+    // par mot de passe, sans lien envoyé par e-mail.
+    detectSessionInUrl: false,
   },
 });

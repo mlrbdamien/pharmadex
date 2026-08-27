@@ -25,39 +25,22 @@ npm run dev
    (« anon key » ou « publishable key ») dans `.env`.
 3. **SQL Editor** : exécuter dans l'ordre
    `supabase/migrations/0001_init.sql` puis `supabase/migrations/0002_seed_tags.sql`.
-4. **Authentication > URL Configuration** :
-   - *Site URL* : l'URL Cloudflare Pages de production ;
-   - *Redirect URLs* : y ajouter `http://localhost:5173` pour le développement.
+4. **Authentication > Sign In / Providers** : décocher **Allow new users to sign up**.
+   Les comptes se créent exclusivement à la main (voir §2).
 5. **Authentication > Sessions** : allonger la durée de session (les postes du
    comptoir doivent rester connectés). Laisser le rafraîchissement automatique actif.
 
-## 1 bis. Service d'envoi d'e-mails — obligatoire avant l'usage réel
-
-Le SMTP intégré de Supabase est **prévu pour les tests uniquement** : quelques
-envois par heure, tous projets confondus (quota exact dans
-*Authentication > Rate Limits*). Passé ce seuil, la connexion renvoie
-« email rate limit exceeded » et plus personne ne peut se connecter.
-
-Avec un compte comptoir partagé qui reste connecté en permanence, les envois
-sont rares — mais l'ouverture des accès à l'équipe les concentre sur une même
-journée. Il faut donc brancher un service tiers.
-
-*Authentication > Emails > SMTP Settings*, avec au choix Resend, Postmark,
-Brevo ou Mailgun : tous ont une offre gratuite très au-delà des besoins d'une
-officine. Renseigner l'hôte, le port, l'identifiant, le mot de passe, ainsi
-qu'une adresse d'expéditeur du domaine de l'officine — un expéditeur crédible
-réduit nettement le classement en indésirable.
-
-Une fois le SMTP configuré, relever la limite dans *Authentication >
-Rate Limits*, qui reste basse par défaut même avec un service tiers.
+Aucune configuration d'URL de redirection ni de SMTP n'est nécessaire :
+Pharmadex n'envoie jamais d'e-mail.
 
 ## 2. Ouvrir l'accès à quelqu'un
 
 Deux gestes, volontairement séparés — il n'y a pas de panneau d'administration.
 
-1. **Créer le compte** : Authentication > Users > **Invite user**, saisir l'adresse.
-   L'application n'a pas le droit de créer de comptes
-   (`signInWithOtp({ shouldCreateUser: false })`), donc cette étape est obligatoire.
+1. **Créer le compte** : *Authentication > Users > Add user > Create new user*.
+   Saisir l'adresse et un mot de passe, et **cocher « Auto Confirm User »** —
+   sans quoi le compte reste en attente d'une confirmation par e-mail que
+   Pharmadex n'enverra jamais.
 2. **Autoriser l'adresse**, dans le SQL Editor :
 
 ```sql
@@ -65,12 +48,22 @@ insert into public.allowed_emails (email, label, can_edit) values
   ('prenom.nom@exemple.ch', 'Prénom', true);   -- true = peut ajouter et modifier
 ```
 
+L'adresse doit être **identique et en minuscules** dans les deux endroits
+(une contrainte `check` le vérifie).
+
 Retirer un accès : supprimer la ligne de `allowed_emails`. La personne reste
-authentifiable mais ne voit plus rien (l'écran « Accès refusé » s'affiche).
+authentifiable mais ne voit plus rien (écran « Accès refusé »). Pour couper
+franchement, supprimer aussi le compte dans *Authentication > Users*.
+
+**Mot de passe oublié** : le redéfinir dans *Authentication > Users*, menu `…`
+de la ligne, *Reset password*. Aucun e-mail n'est envoyé — c'est le prix, assumé,
+de ne dépendre d'aucun service d'envoi.
 
 **Poste du comptoir** : créer un compte partagé (ex. `comptoir@…`) avec
-`can_edit = false`, s'y connecter une fois sur chaque PC, et ne plus s'en
-déconnecter. Aucun magic link à aller chercher pendant un conseil.
+`can_edit = false`, s'y connecter une fois sur chaque PC et ne plus s'en
+déconnecter. Le mot de passe est connu de l'équipe : c'est acceptable ici, où
+l'outil ne contient aucune donnée patient, l'accès reste borné par la RLS, et
+le poste se trouve dans une zone contrôlée.
 
 ## 3. Déployer les Edge Functions
 
