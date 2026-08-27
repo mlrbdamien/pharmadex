@@ -87,11 +87,27 @@ un rechargement sur `/recherches-vides` donnerait un 404.
 
 | Secret | Usage | Où le trouver |
 |---|---|---|
-| `SUPABASE_DB_URL` | sauvegarde nocturne | Project Settings > Database > Connection string (URI, **Session pooler**) |
+| `SUPABASE_DB_URL` | sauvegarde nocturne | Bouton **Connect** (barre du haut) > *Direct connection string* > **Session pooler** > type URI |
 | `CHECK_LINKS_URL` | vérificateur hebdo | `https://<ref>.supabase.co/functions/v1/check-links` |
 | `CHECK_LINKS_SECRET` | vérificateur hebdo | la valeur générée à l'étape 3 |
 
 **Note** : les migrations posent leurs propres `GRANT`, elles fonctionnent donc que « Automatically expose new tables » soit activé ou non.
+
+Deux pièges sur `SUPABASE_DB_URL` :
+
+- **Retirer les crochets.** La chaîne copiée contient `[YOUR-PASSWORD]` ; il faut
+  remplacer le tout, crochets compris. Les laisser produit
+  `FATAL: password authentication failed`.
+- **Le pooler tronque le nom d'utilisateur dans ses messages d'erreur.** Il
+  signale `user "postgres"` alors que la chaîne dit bien
+  `postgres.<project-ref>` — ne pas partir en chasse de ce côté, l'erreur
+  concerne presque toujours le mot de passe.
+
+Pour tester la chaîne sans consommer un cycle de CI :
+
+```bash
+docker run --rm postgres:17-alpine psql "<la-chaîne>" -tAc "select current_user"
+```
 
 **Portée de la sauvegarde** : le dump couvre le schéma `public` — ressources,
 tags, allowlist, journal des recherches. Il ne contient **pas** les fichiers
