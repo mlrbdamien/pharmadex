@@ -1,5 +1,15 @@
 import { supabase } from './supabase';
 
+/**
+ * URL de consultation d'une notice, via le relais fetch-notice.
+ * files.refdata.ch sert ses HTML en application/octet-stream : sans relais
+ * qui rétablit text/html, l'iframe reste blanche.
+ */
+export function noticeViewUrl(htmlUrl: string): string {
+  const doc = htmlUrl.split('/').pop() ?? '';
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-notice?doc=${encodeURIComponent(doc)}`;
+}
+
 export type Notice = {
   authorization_nr: string;
   doc_type: 'SmPC' | 'PIL' | 'PL';

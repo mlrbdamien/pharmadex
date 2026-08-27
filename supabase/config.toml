@@ -9,3 +9,8 @@ verify_jwt = true
 # Appelée par la GitHub Action, sans utilisateur : authentification par le
 # secret partagé CHECK_LINKS_SECRET, vérifié dans le code de la fonction.
 verify_jwt = false
+
+[functions.fetch-notice]
+# Servie à une iframe, qui ne peut pas envoyer de JWT. Le relais est borné par
+# une expression stricte aux documents de notices Refdata, qui sont publics.
+verify_jwt = false

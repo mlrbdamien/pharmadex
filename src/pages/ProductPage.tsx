@@ -15,7 +15,7 @@ import {
 } from '../lib/products';
 import type { LinkDetail, PackageRow } from '../lib/products';
 import type { ProductRow } from '../lib/types';
-import { bestByType, listNotices, NOTICE_SHORTCUTS } from '../lib/notices';
+import { bestByType, listNotices, noticeViewUrl, NOTICE_SHORTCUTS } from '../lib/notices';
 import type { Notice } from '../lib/notices';
 import type { Resource, ScanHit } from '../lib/types';
 
@@ -205,7 +205,11 @@ export function ProductPage() {
                     )}
                     <iframe
                       key={`${activeDoc.html_url}#${anchor}`}
-                      src={anchor ? `${activeDoc.html_url}#${anchor}` : activeDoc.html_url}
+                      src={
+                        anchor
+                          ? `${noticeViewUrl(activeDoc.html_url)}#${anchor}`
+                          : noticeViewUrl(activeDoc.html_url)
+                      }
                       title={DOC_LABELS[activeDoc.doc_type]}
                       sandbox=""
                       className="mt-2 h-[32rem] w-full rounded-lg border border-line bg-surface-1"
