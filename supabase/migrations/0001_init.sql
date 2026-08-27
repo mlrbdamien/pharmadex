@@ -75,6 +75,22 @@ create table public.tags (
 );
 
 -- ---------------------------------------------------------------------------
+-- Aplatissement des tags pour l'indexation.
+--
+-- `array_to_string` est déclarée STABLE, pas IMMUTABLE : les fonctions de
+-- sortie d'éléments peuvent en théorie dépendre de réglages de session (pensez
+-- à DateStyle pour un tableau de dates). Postgres refuse donc de l'employer
+-- dans une colonne générée — d'où ce passe-plat.
+--
+-- Le marquer IMMUTABLE est ici légitime et non un contournement : les éléments
+-- sont du `text`, dont la fonction de sortie (`textout`) est elle-même
+-- immuable. Le résultat ne dépend d'aucun réglage.
+-- ---------------------------------------------------------------------------
+create or replace function public.tags_text(tags text[]) returns text
+  language sql immutable parallel safe
+  as $$ select array_to_string(tags, ' ') $$;
+
+-- ---------------------------------------------------------------------------
 -- Ressources — un lien OU un fichier, jamais les deux, jamais aucun.
 -- ---------------------------------------------------------------------------
 create table public.resources (
@@ -112,7 +128,7 @@ create table public.resources (
 alter table public.resources add column search_vector tsvector
   generated always as (
     setweight(to_tsvector('public.fr_unaccent', coalesce(title, '')),        'A') ||
-    setweight(to_tsvector('public.fr_unaccent', array_to_string(tags, ' ')), 'B') ||
+    setweight(to_tsvector('public.fr_unaccent', public.tags_text(tags)),     'B') ||
     setweight(to_tsvector('public.fr_unaccent', coalesce(description, '')),  'C')
   ) stored;
 
@@ -300,6 +316,7 @@ grant select, delete                 on public.search_misses  to authenticated;
 -- `tags` n'apparaît pas en écriture : son alimentation passe uniquement par le
 -- trigger sync_tags(), en SECURITY DEFINER.
 
+grant execute on function public.tags_text(text[])        to authenticated;
 grant execute on function public.current_email()          to authenticated;
 grant execute on function public.is_allowed()             to authenticated;
 grant execute on function public.can_edit()               to authenticated;
