@@ -25,7 +25,7 @@ function traduireErreur(message: string): string {
 }
 
 const FIELD =
-  'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-teal-600 focus:ring-0';
+  'mt-1 w-full rounded-lg border border-line-strong px-3 py-2 focus:border-accent focus:ring-0';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -57,12 +57,12 @@ export function Login() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Pharmadex</h1>
-      <p className="mt-1 text-sm text-slate-500">Références du comptoir</p>
+      <h1 className="text-2xl font-semibold text-ink">Pharmadex</h1>
+      <p className="mt-1 text-sm text-ink-3">Références du comptoir</p>
 
       <form onSubmit={submit} className="mt-8 space-y-3">
         <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="email">
+          <label className="block text-sm font-medium text-ink-2" htmlFor="email">
             Adresse e-mail
           </label>
           <input
@@ -78,7 +78,7 @@ export function Login() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+          <label className="block text-sm font-medium text-ink-2" htmlFor="password">
             Mot de passe
           </label>
           <input
@@ -92,20 +92,20 @@ export function Login() {
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-critical-text">{error}</p>}
 
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 px-4
-                     py-2 font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4
+                     py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60"
         >
           {busy && <Loader2 className="size-4 animate-spin" />}
           Se connecter
         </button>
       </form>
 
-      <p className="mt-6 text-xs text-slate-400">
+      <p className="mt-6 text-xs text-ink-3">
         Mot de passe oublié ? Il se redéfinit depuis le tableau de bord Supabase — aucun
         e-mail n'est envoyé par Pharmadex.
       </p>

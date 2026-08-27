@@ -19,8 +19,8 @@ export function TagFilter({ tags, active, onSelect }: Props) {
             onClick={() => onSelect(selected ? null : tag)}
             className={`rounded-full border px-2.5 py-1 text-sm transition ${
               selected
-                ? 'border-teal-600 bg-teal-600 text-white'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:text-teal-700'
+                ? 'border-accent bg-accent text-on-accent'
+                : 'border-line bg-surface-1 text-ink-2 hover:border-accent-ring hover:text-accent'
             }`}
           >
             {tag}

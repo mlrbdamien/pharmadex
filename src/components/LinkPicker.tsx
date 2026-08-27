@@ -48,14 +48,14 @@ export function LinkPicker({ product, linked, onDone, onClose }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="rounded-lg border border-line bg-surface-1 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-700">Lier une ressource à…</span>
+        <span className="text-sm font-medium text-ink-2">Lier une ressource à…</span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="rounded p-1 text-slate-400 hover:bg-slate-100"
+          className="rounded p-1 text-ink-3 hover:bg-surface-2"
         >
           <X className="size-4" />
         </button>
@@ -67,8 +67,8 @@ export function LinkPicker({ product, linked, onDone, onClose }: Props) {
           onClick={() => setScope(product.authorization_nr)}
           className={`rounded-full border px-2 py-0.5 text-xs ${
             scope === product.authorization_nr
-              ? 'border-teal-600 bg-teal-600 text-white'
-              : 'border-slate-200 text-slate-600 hover:border-teal-300'
+              ? 'border-accent bg-accent text-on-accent'
+              : 'border-line text-ink-2 hover:border-accent-ring'
           }`}
         >
           ce produit
@@ -81,8 +81,8 @@ export function LinkPicker({ product, linked, onDone, onClose }: Props) {
             title={`Toute la classe ${prefix}`}
             className={`rounded-full border px-2 py-0.5 font-mono text-xs ${
               scope === prefix
-                ? 'border-teal-600 bg-teal-600 text-white'
-                : 'border-slate-200 text-slate-600 hover:border-teal-300'
+                ? 'border-accent bg-accent text-on-accent'
+                : 'border-line text-ink-2 hover:border-accent-ring'
             }`}
           >
             {prefix}
@@ -95,8 +95,8 @@ export function LinkPicker({ product, linked, onDone, onClose }: Props) {
         value={filter}
         onChange={(event) => setFilter(event.target.value)}
         placeholder="Filtrer les ressources…"
-        className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm
-                   focus:border-teal-600 focus:ring-0"
+        className="mt-2 w-full rounded-lg border border-line-strong px-3 py-1.5 text-sm
+                   focus:border-accent focus:ring-0"
       />
       <ul className="mt-2 space-y-1">
         {candidates.map((resource) => (
@@ -105,15 +105,15 @@ export function LinkPicker({ product, linked, onDone, onClose }: Props) {
               type="button"
               disabled={busy}
               onClick={() => void link(resource)}
-              className="w-full truncate rounded px-2 py-1 text-left text-sm text-slate-700
-                         hover:bg-teal-50 hover:text-teal-800"
+              className="w-full truncate rounded px-2 py-1 text-left text-sm text-ink-2
+                         hover:bg-accent-soft hover:text-accent"
             >
               {resource.title}
             </button>
           </li>
         ))}
         {candidates.length === 0 && (
-          <li className="px-2 py-1 text-sm text-slate-400">Aucune ressource à proposer.</li>
+          <li className="px-2 py-1 text-sm text-ink-3">Aucune ressource à proposer.</li>
         )}
       </ul>
     </div>

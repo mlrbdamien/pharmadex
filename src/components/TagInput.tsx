@@ -35,21 +35,21 @@ export function TagInput({ value, onChange, suggestions }: Props) {
   return (
     <div>
       <div
-        className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-300 bg-white
-                   px-2 py-1.5 focus-within:border-teal-600"
+        className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line-strong bg-surface-1
+                   px-2 py-1.5 focus-within:border-accent"
         onClick={() => input.current?.focus()}
       >
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded bg-teal-50 px-1.5 py-0.5 text-sm text-teal-800"
+            className="inline-flex items-center gap-1 rounded bg-accent-soft px-1.5 py-0.5 text-sm text-accent"
           >
             {tag}
             <button
               type="button"
               onClick={() => onChange(value.filter((t) => t !== tag))}
               aria-label={`Retirer ${tag}`}
-              className="text-teal-500 hover:text-teal-800"
+              className="text-accent hover:text-accent"
             >
               <X className="size-3" />
             </button>
@@ -80,8 +80,8 @@ export function TagInput({ value, onChange, suggestions }: Props) {
               key={tag}
               type="button"
               onClick={() => add(tag)}
-              className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-500
-                         hover:border-teal-300 hover:text-teal-700"
+              className="rounded border border-line bg-surface-1 px-1.5 py-0.5 text-xs text-ink-3
+                         hover:border-accent-ring hover:text-accent"
             >
               + {tag}
             </button>

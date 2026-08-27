@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, FileText, Link2, Loader2, Pill, Unlink } from 'lucide-react';
-import { Header } from '../components/Header';
 import { ResourceCard } from '../components/ResourceCard';
 import { LinkPicker } from '../components/LinkPicker';
+import { EnteteEcran, useMenu } from '../components/Coquille';
 import { useAuth } from '../lib/auth';
 import {
   linkDetails,
@@ -104,40 +104,41 @@ export function ProductPage() {
   const product = hit?.product;
 
   return (
-    <div className="min-h-dvh">
-      <Header />
-      <main className="mx-auto max-w-3xl px-4 py-6">
+    <>
+      <EnteteEcran titre="Fiche médicament" onMenu={useMenu()} />
+      <main className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto max-w-3xl">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-ink-3 hover:text-ink"
         >
           <ArrowLeft className="size-4" /> Retour
         </button>
 
         {loading ? (
-          <p className="mt-10 flex items-center justify-center gap-2 text-sm text-slate-400">
+          <p className="mt-10 flex items-center justify-center gap-2 text-sm text-ink-3">
             <Loader2 className="size-4 animate-spin" /> Chargement…
           </p>
         ) : notFound || !product ? (
-          <p className="mt-10 text-center text-sm text-slate-500">
-            Produit inconnu. <Link to="/" className="text-teal-700 underline">Retour à la recherche</Link>
+          <p className="mt-10 text-center text-sm text-ink-3">
+            Produit inconnu. <Link to="/" className="text-accent underline">Retour à la recherche</Link>
           </p>
         ) : (
           <div className="space-y-6">
             {/* ---- En-tête ---- */}
             <section>
               <div className="flex items-start gap-3">
-                <Pill className="mt-1 size-6 shrink-0 text-teal-700" aria-hidden />
+                <Pill className="mt-1 size-6 shrink-0 text-accent" aria-hidden />
                 <div>
-                  <h1 className="text-xl font-semibold text-slate-900">{product.name}</h1>
-                  <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-slate-500">
+                  <h1 className="text-xl font-semibold text-ink">{product.name}</h1>
+                  <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-ink-3">
                     {product.company && <span>{product.company}</span>}
                     {product.atc_code && <span className="font-mono">{product.atc_code}</span>}
                     {product.category && <span>{CATEGORY_LABELS[product.category] ?? product.category}</span>}
                   </p>
                   {product.substances && (
-                    <p className="mt-0.5 text-sm text-slate-400">{product.substances}</p>
+                    <p className="mt-0.5 text-sm text-ink-3">{product.substances}</p>
                   )}
                 </div>
               </div>
@@ -158,8 +159,8 @@ export function ProductPage() {
                         }}
                         className={`rounded-lg border px-3 py-1.5 text-sm ${
                           activeDoc?.doc_type === type
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300 text-slate-600 hover:border-teal-400'
+                            ? 'border-accent bg-accent text-on-accent'
+                            : 'border-line-strong text-ink-2 hover:border-accent'
                         }`}
                       >
                         {DOC_LABELS[type]}
@@ -174,8 +175,8 @@ export function ProductPage() {
                       href={activeDoc.pdf_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3
-                                 py-1.5 text-sm text-slate-600 hover:border-teal-400"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong px-3
+                                 py-1.5 text-sm text-ink-2 hover:border-accent"
                     >
                       <FileText className="size-4" /> PDF
                     </a>
@@ -193,8 +194,8 @@ export function ProductPage() {
                             onClick={() => setAnchor(shortcut.anchor)}
                             className={`rounded-full border px-2.5 py-0.5 text-xs ${
                               anchor === shortcut.anchor
-                                ? 'border-teal-600 bg-teal-50 text-teal-800'
-                                : 'border-slate-200 text-slate-600 hover:border-teal-300'
+                                ? 'border-accent bg-accent-soft text-accent'
+                                : 'border-line text-ink-2 hover:border-accent-ring'
                             }`}
                           >
                             {shortcut.label}
@@ -207,9 +208,9 @@ export function ProductPage() {
                       src={anchor ? `${activeDoc.html_url}#${anchor}` : activeDoc.html_url}
                       title={DOC_LABELS[activeDoc.doc_type]}
                       sandbox=""
-                      className="mt-2 h-[32rem] w-full rounded-lg border border-slate-200 bg-white"
+                      className="mt-2 h-[32rem] w-full rounded-lg border border-line bg-surface-1"
                     />
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-ink-3">
                       Source : AIPS / Refdata — document officiel, à titre consultatif.
                     </p>
                   </>
@@ -220,14 +221,14 @@ export function ProductPage() {
             {/* ---- Ressources liées ---- */}
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <h2 className="text-xs font-semibold tracking-wide text-ink-3 uppercase">
                   Ressources Pharmadex liées
                 </h2>
                 {canEdit && !linking && (
                   <button
                     type="button"
                     onClick={() => setLinking(true)}
-                    className="inline-flex items-center gap-1 text-sm text-teal-700 hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
                   >
                     <Link2 className="size-3.5" /> Lier
                   </button>
@@ -258,14 +259,14 @@ export function ProductPage() {
                       {links && (
                         <div className="flex shrink-0 flex-col items-end gap-1 pt-2">
                           {links.direct.has(resource.id) && (
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                            <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-3">
                               ce produit
                             </span>
                           )}
                           {(links.byPrefix.get(resource.id) ?? []).map((prefix) => (
                             <span
                               key={prefix}
-                              className="rounded bg-teal-50 px-1.5 py-0.5 font-mono text-xs text-teal-700"
+                              className="rounded bg-accent-soft px-1.5 py-0.5 font-mono text-xs text-accent"
                             >
                               {prefix}
                             </span>
@@ -275,7 +276,7 @@ export function ProductPage() {
                               type="button"
                               onClick={() => void unlink(resource)}
                               title="Délier"
-                              className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                              className="rounded p-1 text-ink-3 hover:bg-critical-soft hover:text-critical-text"
                             >
                               <Unlink className="size-4" />
                             </button>
@@ -287,7 +288,7 @@ export function ProductPage() {
                 </div>
               ) : (
                 !linking && (
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-ink-3">
                     Aucune ressource liée à ce produit ou à sa classe.
                   </p>
                 )
@@ -297,15 +298,15 @@ export function ProductPage() {
             {/* ---- Emballages ---- */}
             {packages.length > 0 && (
               <section>
-                <h2 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
                   Emballages ({packages.length})
                 </h2>
                 <table className="w-full text-sm">
                   <tbody>
                     {packages.map((pkg) => (
-                      <tr key={pkg.gtin} className="border-b border-slate-100">
-                        <td className="py-1.5 text-slate-700">{pkg.description || '—'}</td>
-                        <td className="py-1.5 text-right font-mono text-xs text-slate-400">
+                      <tr key={pkg.gtin} className="border-b border-line">
+                        <td className="py-1.5 text-ink-2">{pkg.description || '—'}</td>
+                        <td className="py-1.5 text-right font-mono text-xs text-ink-3">
                           {pkg.gtin}
                         </td>
                       </tr>
@@ -318,20 +319,20 @@ export function ProductPage() {
             {/* ---- Génériques / apparentés ---- */}
             {generics.length > 0 && (
               <section>
-                <h2 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
                   Même classe {product.atc_code} ({generics.length})
                 </h2>
-                <div className="rounded-lg border border-slate-200 bg-white">
+                <div className="rounded-lg border border-line bg-surface-1">
                   {generics.map((generic) => (
                     <Link
                       key={generic.authorization_nr}
                       to={`/p/${generic.authorization_nr}`}
-                      className="flex items-center gap-2 border-b border-slate-100 px-3 py-2 text-sm
-                                 last:border-0 hover:bg-teal-50"
+                      className="flex items-center gap-2 border-b border-line px-3 py-2 text-sm
+                                 last:border-0 hover:bg-accent-soft"
                     >
-                      <span className="min-w-0 flex-1 truncate text-slate-800">{generic.name}</span>
-                      <span className="shrink-0 text-xs text-slate-400">{generic.company}</span>
-                      <ExternalLink className="size-3.5 shrink-0 text-slate-300" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate text-ink">{generic.name}</span>
+                      <span className="shrink-0 text-xs text-ink-3">{generic.company}</span>
+                      <ExternalLink className="size-3.5 shrink-0 text-ink-3" aria-hidden />
                     </Link>
                   ))}
                 </div>
@@ -339,7 +340,8 @@ export function ProductPage() {
             )}
           </div>
         )}
+        </div>
       </main>
-    </div>
+    </>
   );
 }

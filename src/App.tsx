@@ -2,8 +2,11 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './lib/auth';
 import { StoreProvider } from './lib/store';
+import { CoquilleLayout } from './components/Coquille';
 import { Login } from './pages/Login';
 import { Home } from './pages/Home';
+import { Medicaments } from './pages/Medicaments';
+import { Ressources } from './pages/Ressources';
 import { ResourceForm } from './pages/ResourceForm';
 import { ResourcePage } from './pages/ResourcePage';
 import { ProductPage } from './pages/ProductPage';
@@ -20,7 +23,7 @@ function Gate() {
 
   if (status === 'loading') {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-slate-400">
+      <div className="text-ink-3 flex min-h-dvh items-center justify-center">
         <Loader2 className="size-5 animate-spin" />
       </div>
     );
@@ -31,14 +34,14 @@ function Gate() {
   if (status === 'denied') {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 text-center">
-        <h1 className="text-lg font-semibold text-slate-900">Accès refusé</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <h1 className="text-ink text-lg font-semibold">Accès refusé</h1>
+        <p className="text-ink-2 mt-2 text-sm">
           L'adresse <strong>{email}</strong> ne figure pas dans la liste des accès autorisés.
         </p>
         <button
           type="button"
           onClick={() => void signOut()}
-          className="mt-6 rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100"
+          className="border-line-strong hover:bg-surface-2 mt-6 rounded-control border px-4 py-2 text-sm"
         >
           Se déconnecter
         </button>
@@ -49,34 +52,38 @@ function Gate() {
   return (
     <StoreProvider>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route
-          path="/nouveau"
-          element={
-            <EditorsOnly>
-              <ResourceForm />
-            </EditorsOnly>
-          }
-        />
-        <Route path="/r/:id" element={<ResourcePage />} />
-        <Route path="/p/:nr" element={<ProductPage />} />
-        <Route
-          path="/r/:id/modifier"
-          element={
-            <EditorsOnly>
-              <ResourceForm />
-            </EditorsOnly>
-          }
-        />
-        <Route
-          path="/recherches-vides"
-          element={
-            <EditorsOnly>
-              <Misses />
-            </EditorsOnly>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route element={<CoquilleLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/medicaments" element={<Medicaments />} />
+          <Route path="/ressources" element={<Ressources />} />
+          <Route path="/r/:id" element={<ResourcePage />} />
+          <Route path="/p/:nr" element={<ProductPage />} />
+          <Route
+            path="/nouveau"
+            element={
+              <EditorsOnly>
+                <ResourceForm />
+              </EditorsOnly>
+            }
+          />
+          <Route
+            path="/r/:id/modifier"
+            element={
+              <EditorsOnly>
+                <ResourceForm />
+              </EditorsOnly>
+            }
+          />
+          <Route
+            path="/recherches-vides"
+            element={
+              <EditorsOnly>
+                <Misses />
+              </EditorsOnly>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
       </Routes>
     </StoreProvider>
   );

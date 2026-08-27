@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
-import { Header } from '../components/Header';
 import { TagInput } from '../components/TagInput';
+import { EnteteEcran, useMenu } from '../components/Coquille';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import {
@@ -17,8 +17,8 @@ import type { Resource, ResourceDraft } from '../lib/types';
 import { formatSize, todayISO } from '../lib/format';
 
 const FIELD =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:ring-0';
-const LABEL = 'block text-sm font-medium text-slate-700';
+  'w-full rounded-lg border border-line-strong px-3 py-2 text-sm focus:border-accent focus:ring-0';
+const LABEL = 'block text-sm font-medium text-ink-2';
 
 export function ResourceForm() {
   const { id } = useParams<{ id: string }>();
@@ -142,23 +142,24 @@ export function ResourceForm() {
   }
 
   return (
-    <div className="min-h-dvh">
-      <Header />
-      <main className="mx-auto max-w-xl px-4 py-6">
+    <>
+      <EnteteEcran titre="Ressource" onMenu={useMenu()} />
+      <main className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto max-w-xl">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+          className="mb-4 inline-flex items-center gap-1 text-sm text-ink-3 hover:text-ink"
         >
           <ArrowLeft className="size-4" /> Retour
         </button>
 
-        <h1 className="text-lg font-semibold text-slate-900">
+        <h1 className="text-lg font-semibold text-ink">
           {editing ? 'Modifier la ressource' : 'Nouvelle ressource'}
         </h1>
 
         {loading ? (
-          <p className="mt-8 flex items-center gap-2 text-sm text-slate-400">
+          <p className="mt-8 flex items-center gap-2 text-sm text-ink-3">
             <Loader2 className="size-4 animate-spin" /> Chargement…
           </p>
         ) : (
@@ -171,14 +172,14 @@ export function ResourceForm() {
             }}
             className="mt-4 space-y-4"
           >
-            <div className="flex gap-1 rounded-lg bg-slate-100 p-1 text-sm">
+            <div className="flex gap-1 rounded-lg bg-surface-2 p-1 text-sm">
               {(['lien', 'fichier'] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setKind(option)}
                   className={`flex-1 rounded-md px-3 py-1.5 capitalize transition ${
-                    kind === option ? 'bg-white font-medium text-teal-800 shadow-sm' : 'text-slate-500'
+                    kind === option ? 'bg-surface-1 font-medium text-accent shadow-sm' : 'text-ink-3'
                   }`}
                 >
                   {option}
@@ -215,10 +216,10 @@ export function ResourceForm() {
                     setFile(chosen);
                     if (chosen && !titleTouched && !title) setTitle(chosen.name.replace(/\.[^.]+$/, ''));
                   }}
-                  className={`mt-1 ${FIELD} file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1`}
+                  className={`mt-1 ${FIELD} file:mr-3 file:rounded file:border-0 file:bg-surface-2 file:px-2 file:py-1`}
                 />
                 {!file && current?.file_name && (
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-ink-3">
                     Actuel : {current.file_name} · {formatSize(current.file_size)}
                   </p>
                 )}
@@ -227,7 +228,7 @@ export function ResourceForm() {
 
             <div>
               <label className={LABEL} htmlFor="title">
-                Titre {fetching && <span className="text-xs text-slate-400">— récupération…</span>}
+                Titre {fetching && <span className="text-xs text-ink-3">— récupération…</span>}
               </label>
               <input
                 id="title"
@@ -242,7 +243,7 @@ export function ResourceForm() {
 
             <div>
               <label className={LABEL} htmlFor="description">
-                Description <span className="font-normal text-slate-400">(facultative)</span>
+                Description <span className="font-normal text-ink-3">(facultative)</span>
               </label>
               <textarea
                 id="description"
@@ -288,18 +289,18 @@ export function ResourceForm() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-ink-2">
               <input
                 type="checkbox"
                 checked={pinned}
                 onChange={(event) => setPinned(event.target.checked)}
-                className="size-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
+                className="size-4 rounded border-line-strong text-accent focus:ring-accent"
               />
               Épingler en haut de l'accueil
             </label>
 
             {error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-lg border border-critical-soft bg-critical-soft px-3 py-2 text-sm text-critical-text">
                 {error}
               </p>
             )}
@@ -308,21 +309,21 @@ export function ResourceForm() {
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm
-                           font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm
+                           font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60"
               >
                 {saving && <Loader2 className="size-4 animate-spin" />}
                 Enregistrer
               </button>
-              <span className="text-xs text-slate-400">Ctrl + Entrée</span>
+              <span className="text-xs text-ink-3">Ctrl + Entrée</span>
               <div className="flex-1" />
               {editing && (
                 <button
                   type="button"
                   onClick={() => void remove()}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-red-600
-                             hover:bg-red-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-critical-text
+                             hover:bg-critical-soft"
                 >
                   <Trash2 className="size-4" /> Supprimer
                 </button>
@@ -330,7 +331,8 @@ export function ResourceForm() {
             </div>
           </form>
         )}
+        </div>
       </main>
-    </div>
+    </>
   );
 }

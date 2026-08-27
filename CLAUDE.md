@@ -19,7 +19,15 @@ ouvrir » va dans le mauvais sens.
 
 ## Conventions
 
-- Interface **en français**, desktop-first, dense, mode clair. Pas d'onboarding.
+- Interface **en français**, desktop-first, dense. Pas d'onboarding.
+- **Direction visuelle « Console »** (transposée de ~/dev/vetements-p24, v4) :
+  tokens CSS dans `src/index.css` (`--surface/-ink/-line/-accent`… + mode
+  sombre via `prefers-color-scheme`), classes `.etiquette` et `.donnee`,
+  rayons `rounded-card`/`rounded-control`. **Jamais de couleurs Tailwind
+  brutes (slate-500, teal-700…)** : toujours les tokens.
+- **Coquille** (`src/components/Coquille.tsx`) : rail latéral à groupes
+  COMPTOIR / ÉDITION avec compteurs, bloc « État » en pied, `EnteteEcran`
+  par page. Toute nouvelle page s'inscrit dans ce gabarit.
 - `src/lib` (données et logique) · `src/pages` (une route = un fichier) ·
   `src/components` (présentation).
 - Les commentaires expliquent *pourquoi*, jamais *quoi*.
@@ -56,6 +64,9 @@ ouvrir » va dans le mauvais sens.
 - Liaison à deux niveaux : `product_resources` (produit précis) et
   `atc_resources` (préfixe de classe ATC — le vrai levier). La RPC
   `scan_gtin` renvoie l'union des deux.
+- Les médicaments sont NAVIGABLES (page /medicaments : filtre, groupes ATC,
+  pagination) et les ressources aussi (/ressources) — pas seulement
+  atteignables par la recherche.
 - Les produits sont aussi cherchables PAR NOM et par principe actif
   (`search_products`, migration 0004) : cliquer un résultat produit ouvre la
   même fiche qu'un scan (`product_hit`, partagé avec `scan_gtin`).

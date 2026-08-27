@@ -1,20 +1,172 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
+/* ---------------------------------------------------------------------------
+   Direction « Console », transposée de vetements-p24.
 
-/* Desktop-first, dense, mode clair. Rien qui distraie de la barre de recherche. */
-html {
+   Deux partis pris gouvernent le fichier :
+
+   1. Les neutres sont biaisés vers l'accent, jamais du gris pur. Un gris
+      neutre a l'air d'un défaut ; un gris qui penche a l'air choisi.
+
+   2. Toute donnée machine — GTIN, code ATC, compteur, date — se compose en
+      chasse fixe et chiffres alignés (.donnee).
+
+   Seule différence avec la source : l'accent est le teal de Pharmadex, pas le
+   bleu blouse — les neutres penchent donc vers le vert-bleu.
+   --------------------------------------------------------------------------- */
+
+:root {
   color-scheme: light;
+
+  /* Surfaces. `rail` est le fond de la barre latérale, en retrait du contenu. */
+  --page: #fcfdfd;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f4;
+  --rail: #f3f6f5;
+
+  /* Encre et traits, tirés vers le teal. */
+  --text-primary: #151b1a;
+  --text-secondary: #47534f;
+  --text-muted: #87958f;
+  --border: #e2e8e6;
+  --border-strong: #c1ccc8;
+
+  /* Accent : le teal Pharmadex. */
+  --accent: #0f766e;
+  --accent-hover: #0b5a54;
+  --accent-soft: #e6f2f0;
+  --accent-ring: #c9e5e1;
+  /* Encre posée SUR un aplat d'accent : blanc en clair, encre sombre en
+     sombre — l'accent sombre est un teal clair, le blanc n'y contraste plus. */
+  --on-accent: #ffffff;
+
+  /* Sémantique — distincte de l'accent. */
+  --good: #1f6b4a;
+  --good-text: #1f6b4a;
+  --good-soft: #e7f3ec;
+  --warning: #8a6000;
+  --warning-text: #8a6000;
+  --warning-soft: #fdf2e3;
+  --critical: #c9432b;
+  --critical-text: #a8351f;
+  --critical-soft: #fbeeea;
+
+  --shadow-card: 0 1px 2px rgb(21 27 26 / 0.05);
+  --shadow-rail: 0 1px 2px rgb(21 27 26 / 0.07);
+  --shadow-modal: 0 24px 60px -20px rgb(21 27 26 / 0.28);
+  --ring: 0 0 0 2px var(--page), 0 0 0 4px var(--accent);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --page: #0e1312;
+    --surface-1: #161c1b;
+    --surface-2: #1e2624;
+    --rail: #111716;
+
+    --text-primary: #ecf1f0;
+    --text-secondary: #b1bdb9;
+    --text-muted: #7c8984;
+    --border: #252e2c;
+    --border-strong: #374440;
+
+    --accent: #5cb8ae;
+    --accent-hover: #83cbc3;
+    --accent-soft: #142623;
+    --accent-ring: #1c4640;
+    --on-accent: #0e1312;
+
+    --good: #5fbf95;
+    --good-text: #5fbf95;
+    --good-soft: #10251c;
+    --warning: #d9a441;
+    --warning-text: #d9a441;
+    --warning-soft: #241d08;
+    --critical: #ef6a52;
+    --critical-text: #f08a75;
+    --critical-soft: #2a1613;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-rail: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-modal: 0 24px 60px -20px rgb(0 0 0 / 0.7);
+  }
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-rail: var(--rail);
+  --color-ink: var(--text-primary);
+  --color-ink-2: var(--text-secondary);
+  --color-ink-3: var(--text-muted);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-good: var(--good);
+  --color-good-text: var(--good-text);
+  --color-good-soft: var(--good-soft);
+  --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
+  --color-warning-soft: var(--warning-soft);
+  --color-critical: var(--critical);
+  --color-critical-text: var(--critical-text);
+  --color-critical-soft: var(--critical-soft);
+
+  /* Rayons resserrés : une console, pas une application mobile. */
+  --radius-card: 9px;
+  --radius-control: 6px;
+
+  --shadow-card: var(--shadow-card);
+  --shadow-rail: var(--shadow-rail);
+  --shadow-modal: var(--shadow-modal);
+
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+html,
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* La barre de recherche garde le focus en permanence : on masque l'anneau par
-   défaut du navigateur au profit d'un liseré discret. */
-:focus-visible {
-  @apply outline-2 outline-offset-2 outline-teal-600;
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-control);
+}
+
+/* Toute colonne de chiffres s'aligne. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Donnée machine : GTIN, code ATC, compteur, date. */
+.donnee {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Intitulé de section ou de colonne. */
+.etiquette {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+@media print {
+  .rail-navigation {
+    display: none !important;
+  }
 }

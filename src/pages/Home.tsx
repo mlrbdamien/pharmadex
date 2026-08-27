@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, SearchX } from 'lucide-react';
-import { Header } from '../components/Header';
 import { SearchBar } from '../components/SearchBar';
 import { TagFilter } from '../components/TagFilter';
 import { ResourceCard } from '../components/ResourceCard';
+import { EnteteEcran, useMenu } from '../components/Coquille';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import {
@@ -146,10 +146,10 @@ export function Home() {
   }
 
   return (
-    <div className="min-h-dvh">
-      <Header />
-
-      <main className="mx-auto max-w-3xl px-4 py-6">
+    <>
+      <EnteteEcran titre="Recherche" onMenu={useMenu()} />
+      <main className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto max-w-3xl">
         <SearchBar
           value={query}
           onChange={setQuery}
@@ -164,33 +164,33 @@ export function Home() {
         )}
 
         {error && (
-          <p className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="mt-6 rounded-lg border border-critical-soft bg-critical-soft px-4 py-3 text-sm text-critical-text">
             {error}
           </p>
         )}
 
         {loading ? (
-          <p className="mt-10 flex items-center justify-center gap-2 text-sm text-slate-400">
+          <p className="mt-10 flex items-center justify-center gap-2 text-sm text-ink-3">
             <Loader2 className="size-4 animate-spin" /> Chargement…
           </p>
         ) : trimmed ? (
           scan || results.length > 0 || productMatches.length > 0 ? (
             <div className="mt-4 space-y-2">
               {!scan && productMatches.length > 0 && (
-                <div className="rounded-lg border border-slate-200 bg-white">
+                <div className="rounded-lg border border-line bg-surface-1">
                   {productMatches.map((product) => (
                     <Link
                       key={product.authorization_nr}
                       to={`/p/${product.authorization_nr}`}
-                      className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2
-                                 text-left text-sm last:border-0 hover:bg-teal-50"
+                      className="flex w-full items-center gap-2 border-b border-line px-3 py-2
+                                 text-left text-sm last:border-0 hover:bg-accent-soft"
                     >
-                      <Pill className="size-4 shrink-0 text-teal-600" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                      <Pill className="size-4 shrink-0 text-accent" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate font-medium text-ink">
                         {product.name}
                       </span>
                       {product.atc_code && (
-                        <span className="shrink-0 font-mono text-xs text-slate-400">
+                        <span className="shrink-0 font-mono text-xs text-ink-3">
                           {product.atc_code}
                         </span>
                       )}
@@ -209,23 +209,23 @@ export function Home() {
               )}
               {results.map((r, i) => card(r, i === 0))}
               {scan && results.length === 0 && (
-                <p className="px-1 text-sm text-slate-500">
+                <p className="px-1 text-sm text-ink-3">
                   Aucune ressource liée à ce produit pour l'instant.
                 </p>
               )}
             </div>
           ) : (
             <div className="mt-10 text-center">
-              <SearchX className="mx-auto size-8 text-slate-300" />
-              <p className="mt-2 text-sm text-slate-500">
+              <SearchX className="mx-auto size-8 text-ink-3" />
+              <p className="mt-2 text-sm text-ink-3">
                 Aucun résultat pour « {trimmed} »
               </p>
               {canEdit && (
                 <button
                   type="button"
                   onClick={() => navigate(`/nouveau?titre=${encodeURIComponent(trimmed)}`)}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-teal-600
-                             px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent
+                             px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft"
                 >
                   <Plus className="size-4" /> Ajouter cette ressource
                 </button>
@@ -236,20 +236,20 @@ export function Home() {
           <div className="mt-6 space-y-6">
             {pinned.length > 0 && (
               <section>
-                <h2 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
                   Épinglées
                 </h2>
                 <div className="space-y-2">{pinned.map((r) => card(r))}</div>
               </section>
             )}
             <section>
-              <h2 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+              <h2 className="mb-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
                 {activeTag ? `Tag « ${activeTag} »` : 'Dernières ajoutées'}
               </h2>
               {rest.length > 0 ? (
                 <div className="space-y-2">{rest.slice(0, 30).map((r) => card(r))}</div>
               ) : (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-ink-3">
                   Rien pour l'instant.
                   {canEdit && ' Utilisez « Ajouter » pour créer la première ressource.'}
                 </p>
@@ -257,7 +257,8 @@ export function Home() {
             </section>
           </div>
         )}
+        </div>
       </main>
-    </div>
+    </>
   );
 }
