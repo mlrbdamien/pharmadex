@@ -2,6 +2,28 @@ import { useState } from 'react';
 import { Loader2, MailCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+/**
+ * Les messages de Supabase sont en anglais et techniques. Au comptoir, un
+ * message incompréhensible fait abandonner : on traduit les cas connus et on
+ * dit quoi faire, pas seulement ce qui a échoué.
+ */
+function traduireErreur(message: string): string {
+  const m = message.toLowerCase();
+  if (/rate limit|too many/.test(m)) {
+    return "Trop de liens demandés ces dernières minutes. Patientez avant de réessayer, ou demandez à un collègue déjà connecté d'ouvrir Pharmadex sur ce poste.";
+  }
+  if (/signup|not found|not allowed|disabled/.test(m)) {
+    return "Cette adresse n'a pas accès à Pharmadex.";
+  }
+  if (/invalid|malformed/.test(m)) {
+    return 'Adresse e-mail invalide.';
+  }
+  if (/network|fetch|failed to/.test(m)) {
+    return 'Connexion impossible. Vérifiez le réseau du poste.';
+  }
+  return `Échec de l'envoi : ${message}`;
+}
+
 export function Login() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
@@ -24,11 +46,7 @@ export function Login() {
 
     if (cause) {
       setState('idle');
-      setError(
-        /signup|not found|not allowed/i.test(cause.message)
-          ? "Cette adresse n'a pas accès à Pharmadex."
-          : cause.message,
-      );
+      setError(traduireErreur(cause.message));
       return;
     }
     setState('sent');

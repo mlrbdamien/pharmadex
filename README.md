@@ -31,6 +31,26 @@ npm run dev
 5. **Authentication > Sessions** : allonger la durée de session (les postes du
    comptoir doivent rester connectés). Laisser le rafraîchissement automatique actif.
 
+## 1 bis. Service d'envoi d'e-mails — obligatoire avant l'usage réel
+
+Le SMTP intégré de Supabase est **prévu pour les tests uniquement** : quelques
+envois par heure, tous projets confondus (quota exact dans
+*Authentication > Rate Limits*). Passé ce seuil, la connexion renvoie
+« email rate limit exceeded » et plus personne ne peut se connecter.
+
+Avec un compte comptoir partagé qui reste connecté en permanence, les envois
+sont rares — mais l'ouverture des accès à l'équipe les concentre sur une même
+journée. Il faut donc brancher un service tiers.
+
+*Authentication > Emails > SMTP Settings*, avec au choix Resend, Postmark,
+Brevo ou Mailgun : tous ont une offre gratuite très au-delà des besoins d'une
+officine. Renseigner l'hôte, le port, l'identifiant, le mot de passe, ainsi
+qu'une adresse d'expéditeur du domaine de l'officine — un expéditeur crédible
+réduit nettement le classement en indésirable.
+
+Une fois le SMTP configuré, relever la limite dans *Authentication >
+Rate Limits*, qui reste basse par défaut même avec un service tiers.
+
 ## 2. Ouvrir l'accès à quelqu'un
 
 Deux gestes, volontairement séparés — il n'y a pas de panneau d'administration.
