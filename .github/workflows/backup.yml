@@ -1,0 +1,42 @@
+name: Sauvegarde nocturne
+
+# Secret requis (Settings > Secrets and variables > Actions) :
+#   SUPABASE_DB_URL — chaîne de connexion Postgres complète, mot de passe inclus.
+#     Dashboard Supabase > Project Settings > Database > Connection string > URI.
+#     Prendre la variante « Session pooler » : les runners GitHub n'ont pas d'IPv6,
+#     et la connexion directe n'expose qu'une adresse IPv6.
+
+on:
+  schedule:
+    - cron: '17 2 * * *' # 02 h 17 UTC, tous les jours
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: pg_dump du schéma public
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Le secret SUPABASE_DB_URL n'est pas défini."
+            exit 1
+          fi
+          name="pharmadex-$(date -u +%Y-%m-%d).sql.gz"
+          # L'image officielle évite de dépendre de la version de pg_dump
+          # installée sur le runner, qui doit correspondre à celle du serveur.
+          docker run --rm postgres:17-alpine \
+            pg_dump --schema=public --no-owner --no-privileges --clean --if-exists \
+            "$SUPABASE_DB_URL" | gzip -9 > "$name"
+          echo "DUMP_NAME=$name" >> "$GITHUB_ENV"
+          echo "Sauvegarde : $name ($(du -h "$name" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Conserver le dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DUMP_NAME }}
+          path: '*.sql.gz'
+          retention-days: 90
+          if-no-files-found: error

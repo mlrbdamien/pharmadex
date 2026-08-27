@@ -1,0 +1,30 @@
+name: Vérification des liens
+
+# Secrets requis :
+#   CHECK_LINKS_URL    — https://<ref>.supabase.co/functions/v1/check-links
+#   CHECK_LINKS_SECRET — même valeur que le secret posé sur l'Edge Function :
+#     npx supabase secrets set CHECK_LINKS_SECRET=<valeur>
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # lundi 03 h 00 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déclencher l'Edge Function
+        env:
+          CHECK_LINKS_URL: ${{ secrets.CHECK_LINKS_URL }}
+          CHECK_LINKS_SECRET: ${{ secrets.CHECK_LINKS_SECRET }}
+        run: |
+          set -euo pipefail
+          response=$(curl -sS --fail-with-body --max-time 300 -X POST "$CHECK_LINKS_URL" \
+            -H "x-pharmadex-secret: $CHECK_LINKS_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "$response"
+          echo "\`\`\`json" >> "$GITHUB_STEP_SUMMARY"
+          echo "$response" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,11 @@
+project_id = "pharmadex"
+
+[functions.fetch-title]
+# Appelée depuis le navigateur par un utilisateur connecté : le JWT est vérifié
+# par la plateforme. Sans cela, ce serait un proxy HTTP ouvert sur Internet.
+verify_jwt = true
+
+[functions.check-links]
+# Appelée par la GitHub Action, sans utilisateur : authentification par le
+# secret partagé CHECK_LINKS_SECRET, vérifié dans le code de la fonction.
+verify_jwt = false
