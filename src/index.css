@@ -57,8 +57,14 @@
   --ring: 0 0 0 2px var(--page), 0 0 0 4px var(--accent);
 }
 
+/* ---------------------------------------------------------------------------
+   Thème sombre — trois états : « système » (défaut, via prefers-color-scheme),
+   ou forcé par data-theme="light" / "dark" posé sur <html> (src/lib/theme.ts).
+   Les DEUX blocs ci-dessous portent les mêmes valeurs : toute retouche se fait
+   dans les deux.
+   --------------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
 
     --page: #0e1312;
@@ -92,6 +98,41 @@
     --shadow-rail: 0 1px 2px rgb(0 0 0 / 0.5);
     --shadow-modal: 0 24px 60px -20px rgb(0 0 0 / 0.7);
   }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --page: #0e1312;
+    --surface-1: #161c1b;
+    --surface-2: #1e2624;
+    --rail: #111716;
+
+    --text-primary: #ecf1f0;
+    --text-secondary: #b1bdb9;
+    --text-muted: #7c8984;
+    --border: #252e2c;
+    --border-strong: #374440;
+
+    --accent: #5cb8ae;
+    --accent-hover: #83cbc3;
+    --accent-soft: #142623;
+    --accent-ring: #1c4640;
+    --on-accent: #0e1312;
+
+    --good: #5fbf95;
+    --good-text: #5fbf95;
+    --good-soft: #10251c;
+    --warning: #d9a441;
+    --warning-text: #d9a441;
+    --warning-soft: #241d08;
+    --critical: #ef6a52;
+    --critical-text: #f08a75;
+    --critical-soft: #2a1613;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-rail: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-modal: 0 24px 60px -20px rgb(0 0 0 / 0.7);
 }
 
 @theme inline {

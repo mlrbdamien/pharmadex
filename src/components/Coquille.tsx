@@ -5,6 +5,9 @@ import {
   Lock,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
+  Sun,
   Pill,
   Plus,
   Search,
@@ -13,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useCompteurs, type Compteurs } from '../lib/compteurs';
+import { applyTheme, getTheme, nextTheme, type Theme } from '../lib/theme';
 import { cn } from './ui';
 
 /**
@@ -171,10 +175,11 @@ export function Rail({ ouvert = false, onFermer }: { ouvert?: boolean; onFermer?
       <EtatGeneral compteurs={compteurs} />
 
       <div className="border-line border-t px-5 py-3 md:px-2 xl:px-5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-ink-3 min-w-0 truncate text-[12.5px] md:hidden xl:block" title={email ?? ''}>
+        <div className="flex items-center justify-between gap-1 max-md:justify-start md:flex-col md:gap-1.5 xl:flex-row xl:justify-between">
+          <span className="text-ink-3 min-w-0 flex-1 truncate text-[12.5px] md:hidden xl:block" title={email ?? ''}>
             {email}
           </span>
+          <BoutonTheme />
           <button
             type="button"
             onClick={() => void signOut().then(() => navigate('/'))}
@@ -186,6 +191,36 @@ export function Rail({ ouvert = false, onFermer }: { ouvert?: boolean; onFermer?
         </div>
       </div>
     </nav>
+  );
+}
+
+/**
+ * Clair / sombre / système, en un bouton qui cycle. Le réglage est propre au
+ * poste (localStorage), pas au compte — chaque PC du comptoir garde le sien.
+ */
+function BoutonTheme() {
+  const [theme, setTheme] = useState<Theme>(getTheme);
+
+  const LIBELLES: Record<Theme, string> = {
+    system: 'Thème : système — cliquer pour forcer le clair',
+    light: 'Thème : clair — cliquer pour forcer le sombre',
+    dark: 'Thème : sombre — cliquer pour revenir au système',
+  };
+  const Icone = theme === 'system' ? Monitor : theme === 'light' ? Sun : Moon;
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const suivant = nextTheme(theme);
+        applyTheme(suivant);
+        setTheme(suivant);
+      }}
+      title={LIBELLES[theme]}
+      className="rounded-control text-ink-3 hover:bg-surface-2 hover:text-ink inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center transition-colors"
+    >
+      <Icone size={15} strokeWidth={1.75} />
+    </button>
   );
 }
 
