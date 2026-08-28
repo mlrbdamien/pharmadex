@@ -97,11 +97,11 @@ ouvrir » va dans le mauvais sens.
   (`isStale`, `STALE_MONTHS`) porte un badge ambre « à revérifier » et
   remonte dans le bloc État. C'est le pendant « contenu » du badge
   « lien cassé ».
-- **Références externes** (fiche produit, `src/lib/refs.ts`) : Le CRAT en
-  lien profond avec substance francisée (heuristique latin→français validée
-  contre leur recherche), SwissPedDose en lien + copie de substance (login
-  obligatoire chez eux, pas de lien profond). Guidelines SSI : ressource
-  épinglée, pas de bouton fiche (recherche non adressable par URL).
+- **Références externes** (`src/lib/refs.ts`) : groupe « Références » du
+  rail — Guidelines SSI, Le CRAT, iMail Offizin, SwissPedDose, en simples
+  liens à un seul endroit. Les boutons contextuels par substance sur la
+  fiche ont été ESSAYÉS PUIS RETIRÉS (décision Damien) : la francisation
+  des noms latins était trop approximative. Ne pas les réintroduire.
 
 ## Hors périmètre — ne pas construire sans demande explicite
 

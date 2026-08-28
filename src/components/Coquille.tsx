@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { pushSeed } from '../lib/searchSeed';
+import { LIENS_REFERENCES } from '../lib/refs';
 import {
+  ExternalLink,
   ListX,
   Lock,
   LogOut,
@@ -171,6 +173,32 @@ export function Rail({ ouvert = false, onFermer }: { ouvert?: boolean; onFermer?
             </div>
           </div>
         ))}
+        <div className="px-2.5">
+          <p className="etiquette mb-1.5 px-2 md:hidden xl:block">Références</p>
+          <div className="flex flex-col gap-0.5">
+            {LIENS_REFERENCES.map((ref) => (
+              <a
+                key={ref.url}
+                href={ref.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={ref.titre}
+                className="group rounded-control text-ink-2 hover:bg-surface-2 hover:text-ink flex
+                           cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left text-[14.5px]
+                           transition-colors md:justify-center md:px-0 xl:justify-start xl:px-2.5"
+              >
+                <ref.icone size={16} strokeWidth={1.75} className="text-ink-3 shrink-0" />
+                <span className="flex-1 truncate md:hidden xl:block">{ref.label}</span>
+                <ExternalLink
+                  size={11}
+                  strokeWidth={2}
+                  className="text-ink-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-60 md:hidden xl:block"
+                  aria-hidden
+                />
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
 
       <EtatGeneral compteurs={compteurs} />
