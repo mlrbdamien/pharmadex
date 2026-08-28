@@ -103,6 +103,14 @@ ouvrir » va dans le mauvais sens.
   fiche ont été ESSAYÉS PUIS RETIRÉS (décision Damien) : la francisation
   des noms latins était trop approximative. Ne pas les réintroduire.
 
+- **Traduction allemand → français à l'import** (`scripts/formes_fr.py`) :
+  Swissmedic ne publie ses données qu'en allemand ; l'import traduit les
+  suffixes de forme et les unités d'emballage via une table déterministe
+  (terminologie officielle). Les marques, substances (latin) et produits
+  enregistrés en italien ne sont JAMAIS touchés. Le résumé du workflow
+  compte les formes restées en allemand — compléter la table, pas inventer
+  un service de traduction.
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
 - Recherche plein texte DANS les notices (elles restent chez Refdata).

@@ -27,6 +27,8 @@ from pathlib import Path
 
 import openpyxl
 
+from formes_fr import forme_non_traduite, traduire_emballage, traduire_nom
+
 URL = (
     "https://www.swissmedic.ch/dam/swissmedic/en/dokumente/internetlisten/"
     "zugelassene_packungen_human.xlsx"
@@ -145,8 +147,22 @@ def parse(path: Path):
             "gtin": gtin,
             "authorization_nr": auth,
             "pack_code": pack.zfill(3),
-            "description": size,
+            "description": traduire_emballage(size),
         }
+
+    # Traduction des suffixes de forme, une fois le nom le plus court retenu.
+    restes: dict[str, int] = {}
+    for product in products.values():
+        reste = forme_non_traduite(product["name"])
+        if reste:
+            restes[reste] = restes.get(reste, 0) + 1
+        product["name"] = traduire_nom(product["name"])
+    if restes:
+        top = sorted(restes.items(), key=lambda kv: -kv[1])[:12]
+        print(f"formes restées en allemand : {sum(restes.values())} produits, "
+              f"{len(restes)} formes — les plus fréquentes :", file=sys.stderr)
+        for forme, n in top:
+            print(f"    {n:4}  {forme[:70]}", file=sys.stderr)
 
     return products, packages, skipped, header_idx
 
