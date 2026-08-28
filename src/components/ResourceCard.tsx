@@ -9,7 +9,7 @@ import {
   PinOff,
 } from 'lucide-react';
 import type { Resource } from '../lib/types';
-import { markVerified, togglePinned } from '../lib/resources';
+import { isStale, markVerified, STALE_MONTHS, togglePinned } from '../lib/resources';
 import { formatDate, formatSize, hostname } from '../lib/format';
 
 type Props = {
@@ -54,6 +54,14 @@ export function ResourceCard({ resource, canEdit, onTagClick, onChanged, first }
             {resource.title}
           </h3>
           {resource.pinned && <Pin className="size-3.5 shrink-0 text-warning" aria-label="Épinglée" />}
+          {!resource.broken && isStale(resource) && (
+            <span
+              className="bg-warning-soft text-warning-text inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium"
+              title={`Pas de vérification depuis plus de ${STALE_MONTHS} mois`}
+            >
+              à revérifier
+            </span>
+          )}
           {resource.broken && (
             <span
               className="inline-flex shrink-0 items-center gap-1 rounded bg-critical-soft px-1.5 py-0.5

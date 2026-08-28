@@ -89,6 +89,20 @@ ouvrir » va dans le mauvais sens.
 - `NOTICE_SHORTCUTS` (src/lib/notices.ts) : rubriques en un clic, savoir de
   pharmacien — ancres #sectionN standardisées des notices.
 
+- **Douchette globale** : la capture de frappe vit dans la coquille
+  (CoquilleLayout) et vaut pour TOUS les écrans — un scan ramène à la
+  recherche, la saisie préservée par le tampon `src/lib/searchSeed.ts`.
+  Ne pas remettre d'écouteur clavier global dans un composant de page.
+- **Fraîcheur** : une ressource sans vérification depuis 12 mois
+  (`isStale`, `STALE_MONTHS`) porte un badge ambre « à revérifier » et
+  remonte dans le bloc État. C'est le pendant « contenu » du badge
+  « lien cassé ».
+- **Références externes** (fiche produit, `src/lib/refs.ts`) : Le CRAT en
+  lien profond avec substance francisée (heuristique latin→français validée
+  contre leur recherche), SwissPedDose en lien + copie de substance (login
+  obligatoire chez eux, pas de lien profond). Guidelines SSI : ressource
+  épinglée, pas de bouton fiche (recherche non adressable par URL).
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
 - Recherche plein texte DANS les notices (elles restent chez Refdata).

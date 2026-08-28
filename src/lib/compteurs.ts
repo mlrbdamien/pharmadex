@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
 import { useStore } from './store';
+import { isStale } from './resources';
 
 export type Compteurs = {
   ressources: number;
   liensCasses: number;
+  aReverifier: number;
   produits: number | null;
   /** null tant qu'inconnu — et pour le comptoir, dont la RLS interdit ce count. */
   recherchesVides: number | null;
@@ -41,6 +43,7 @@ export function useCompteurs(): Compteurs {
   return {
     ressources: resources.length,
     liensCasses: resources.filter((r) => r.broken).length,
+    aReverifier: resources.filter((r) => !r.broken && isStale(r)).length,
     produits,
     recherchesVides,
   };

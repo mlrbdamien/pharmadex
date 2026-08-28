@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, FileText, Link2, Loader2, Pill, Unlink } from 'lucide-react';
+import { ArrowLeft, Baby, Check, Copy, ExternalLink, FileText, Link2, Loader2, Pill, Unlink } from 'lucide-react';
 import { ResourceCard } from '../components/ResourceCard';
 import { LinkPicker } from '../components/LinkPicker';
 import { EnteteEcran, useMenu } from '../components/Coquille';
@@ -16,6 +16,7 @@ import {
 import type { LinkDetail, PackageRow } from '../lib/products';
 import type { ProductRow } from '../lib/types';
 import { bestByType, fetchNoticeHtml, listNotices, NOTICE_SHORTCUTS } from '../lib/notices';
+import { lecratUrl, substancesRecherchables, SWISSPEDDOSE_URL } from '../lib/refs';
 import type { Notice } from '../lib/notices';
 import type { Resource, ScanHit } from '../lib/types';
 
@@ -47,6 +48,7 @@ export function ProductPage() {
   const [anchor, setAnchor] = useState('');
   const noticeFrame = useRef<HTMLIFrameElement>(null);
   const [linking, setLinking] = useState(false);
+  const [copie, setCopie] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -260,6 +262,62 @@ export function ProductPage() {
             </div>
 
             <div className="min-w-0 space-y-6">
+            {/* ---- Références externes ---- */}
+            {(() => {
+              const substances = substancesRecherchables(product.substances);
+              if (substances.length === 0) return null;
+              return (
+                <section>
+                  <h2 className="etiquette mb-2">Références externes</h2>
+                  <div className="border-line bg-surface-1 shadow-card space-y-2 rounded-card border p-3">
+                    {substances.map((substance) => (
+                      <a
+                        key={substance}
+                        href={lecratUrl(substance)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="border-line hover:border-accent-ring hover:bg-accent-soft flex items-center
+                                   gap-2 rounded-control border px-2.5 py-1.5 text-sm transition-colors"
+                      >
+                        <Baby size={15} className="text-accent shrink-0" aria-hidden />
+                        <span className="text-ink min-w-0 flex-1 truncate">
+                          Le CRAT — {substance}
+                        </span>
+                        <ExternalLink size={13} className="text-ink-3 shrink-0" aria-hidden />
+                      </a>
+                    ))}
+                    {/* SwissPedDose est derrière un login : pas de lien profond
+                        possible. On copie la substance pour la coller dans leur
+                        recherche — la session du poste persiste. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(substances[0])
+                          .catch(() => {});
+                        setCopie(true);
+                        setTimeout(() => setCopie(false), 2500);
+                        window.open(SWISSPEDDOSE_URL, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="border-line hover:border-accent-ring hover:bg-accent-soft flex w-full
+                                 items-center gap-2 rounded-control border px-2.5 py-1.5 text-left text-sm
+                                 transition-colors"
+                    >
+                      {copie ? (
+                        <Check size={15} className="text-good shrink-0" aria-hidden />
+                      ) : (
+                        <Copy size={15} className="text-accent shrink-0" aria-hidden />
+                      )}
+                      <span className="text-ink min-w-0 flex-1 truncate">
+                        SwissPedDose{copie ? ' — substance copiée, collez-la' : ''}
+                      </span>
+                      <ExternalLink size={13} className="text-ink-3 shrink-0" aria-hidden />
+                    </button>
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* ---- Ressources liées ---- */}
             <section>
               <div className="mb-2 flex items-center justify-between">

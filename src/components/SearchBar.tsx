@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
+import { consumeSeed, onSeed } from '../lib/searchSeed';
 
 type Props = {
   value: string;
@@ -12,31 +13,21 @@ type Props = {
 export function SearchBar({ value, onChange, onEnter, count }: Props) {
   const input = useRef<HTMLInputElement>(null);
 
+  // La capture de frappe globale vit dans la coquille (elle vaut pour tous
+  // les écrans) ; la barre consomme ici le tampon — y compris les caractères
+  // d'un scan arrivés pendant le changement de route — puis s'abonne au flux.
+  const latest = useRef({ value, onChange });
+  latest.current = { value, onChange };
+
   useEffect(() => {
     input.current?.focus();
-  }, []);
-
-  // Les douchettes code-barres se comportent comme un clavier très rapide, mais
-  // ne donnent pas le focus au champ. On redirige donc toute frappe imprimable
-  // vers la barre de recherche, où qu'on se trouve sur la page.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const typingElsewhere =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        target?.isContentEditable === true;
-      if (typingElsewhere || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.key.length !== 1) return;
-
-      event.preventDefault();
+    const seed = consumeSeed();
+    if (seed) latest.current.onChange(latest.current.value + seed);
+    return onSeed((char) => {
       input.current?.focus();
-      onChange(value + event.key);
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [value, onChange]);
+      latest.current.onChange(latest.current.value + char);
+    });
+  }, []);
 
   return (
     <div className="relative">

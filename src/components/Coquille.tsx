@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { pushSeed } from '../lib/searchSeed';
 import {
   ListX,
   Lock,
@@ -55,7 +56,7 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
         libelle: 'Ressources',
         icone: BookMarked,
         compteur: (c) => c.ressources || null,
-        alerte: (c) => c.liensCasses > 0,
+        alerte: (c) => c.liensCasses > 0 || c.aReverifier > 0,
       },
     ],
   },
@@ -229,6 +230,7 @@ function EtatGeneral({ compteurs }: { compteurs: Compteurs }) {
   const lignes: { l: string; n: number | null; mal: boolean }[] = [
     { l: 'Ressources', n: compteurs.ressources, mal: false },
     { l: 'Liens cassés', n: compteurs.liensCasses, mal: compteurs.liensCasses > 0 },
+    { l: 'À revérifier', n: compteurs.aReverifier, mal: compteurs.aReverifier > 0 },
     { l: 'Médicaments', n: compteurs.produits, mal: false },
   ];
 
@@ -305,6 +307,43 @@ export function useMenu(): () => void {
 /** Le gabarit commun : rail à gauche, écran courant à droite. */
 export function CoquilleLayout() {
   const [railOuvert, setRailOuvert] = useState(false);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // La douchette fonctionne depuis N'IMPORTE QUEL écran : toute frappe
+  // imprimable hors d'un champ ramène à la recherche, la saisie préservée
+  // dans un tampon (les premiers caractères d'un scan arrivent pendant le
+  // changement de route). `/` ou Ctrl+K y vont aussi, à vide.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target?.isContentEditable === true;
+      if (typing) return;
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        navigate('/');
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === '/') {
+        event.preventDefault();
+        navigate('/');
+        return;
+      }
+      if (event.key.length !== 1) return;
+
+      event.preventDefault();
+      pushSeed(event.key);
+      if (pathname !== '/') navigate('/');
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [pathname, navigate]);
 
   return (
     <div className="flex h-dvh overflow-hidden">

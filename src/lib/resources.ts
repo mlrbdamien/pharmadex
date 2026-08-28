@@ -51,6 +51,24 @@ export async function searchResources(q: string): Promise<Resource[]> {
   return data ?? [];
 }
 
+/** Au-delà de cet âge, une ressource jamais revue est considérée à revérifier. */
+export const STALE_MONTHS = 12;
+
+/**
+ * Une ressource est « à revérifier » quand sa dernière vérification (ou, à
+ * défaut, sa création) remonte à plus de STALE_MONTHS. C'est ce qui donne un
+ * sens au champ « vérifié le » : sans rappel, la date n'est que décorative —
+ * et en officine, un protocole périmé est plus dangereux qu'un lien mort.
+ */
+export function isStale(resource: Resource): boolean {
+  const reference = resource.verified_on ?? resource.created_at;
+  const date = new Date(reference);
+  if (Number.isNaN(date.getTime())) return false;
+  const limite = new Date();
+  limite.setMonth(limite.getMonth() - STALE_MONTHS);
+  return date < limite;
+}
+
 // ---------------------------------------------------------------------------
 // Filtrage local — affiché pendant que la requête réseau est en vol, pour que
 // l'écran ne soit jamais vide entre deux frappes.
