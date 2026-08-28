@@ -191,10 +191,130 @@ _RETOUCHES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bzur intravenösen Anwendung\b", re.I), "pour voie intraveineuse"),
     (re.compile(r"\bzum Einnehmen\b", re.I), "par voie orale"),
     (re.compile(r"\bzur Anwendung auf der Haut\b", re.I), "pour application cutanée"),
+    # « … zur Herstellung einer Injektionslösung » → « … pour solution injectable ».
+    # Sans cette réécriture, le mot à mot produit « pour préparation une … ».
+    (re.compile(r"\bzur Herstellung (?:einer|eines|einem)\b", re.I), "pour"),
+    (re.compile(r"\bzur Herstellung von\b", re.I), "pour"),
+    # Forme abrégée « Injektions- /Infusionslösung » : le premier terme est
+    # tronqué, le mot à mot ne peut rien en faire.
+    (re.compile(r"\bInjektions-\s*/\s*Infusions(lösung|suspension)\b", re.I),
+     lambda m: "solution injectable/pour perfusion" if m.group(1).lower() == "lösung"
+     else "suspension injectable/pour perfusion"),
+    (re.compile(r"\bInjektions-\s*/\s*Infusion\b", re.I), "injectable/pour perfusion"),
 ]
 
+# ---------------------------------------------------------------------------
+# Vocabulaire mot à mot, pour les suffixes composés absents de la table.
+#
+# Appliqué avec des FRONTIÈRES DE MOT : sans elles, « Lösung » se remplaçait
+# à l'intérieur de « Lösungsmittel » et produisait « solutionsmittel ».
+# ---------------------------------------------------------------------------
+VOCABULAIRE: dict[str, str] = {
+    # Composés soudés — à placer avant les mots simples (tri par longueur).
+    "Injektionssuspension": "suspension injectable",
+    "Injektionsemulsion": "émulsion injectable",
+    "Injektionslösung": "solution injectable",
+    "Infusionsdispersion": "dispersion pour perfusion",
+    "Infusionsemulsion": "émulsion pour perfusion",
+    "Infusionslösung": "solution pour perfusion",
+    "Infusionskonzentrat": "solution à diluer pour perfusion",
+    "Inhalationslösung": "solution pour inhalation",
+    "Augentropfen": "collyre",
+    "Nasentropfen": "gouttes nasales",
+    "Ohrentropfen": "gouttes auriculaires",
+    # Formes de tête
+    "Flüssigkeit": "liquide",
+    "Lösungsmittel": "solvant",
+    "Lösung": "solution",
+    "Lösungen": "solutions",
+    "Pulver": "poudre",
+    "Schaum": "mousse",
+    "Konzentrat": "solution à diluer",
+    "Suspension": "suspension",
+    "Emulsion": "émulsion",
+    "Dispersion": "dispersion",
+    "Salbe": "pommade",
+    "Creme": "crème",
+    "Gel": "gel",
+    "Granulat": "granulés",
+    "Tabletten": "comprimés",
+    "Tablette": "comprimé",
+    "Kapseln": "capsules",
+    "Hartkapseln": "gélules",
+    "Weichkapseln": "capsules molles",
+    "Tropfen": "gouttes",
+    "Sirup": "sirop",
+    "Spray": "spray",
+    "Pflaster": "patch",
+    "Zäpfchen": "suppositoires",
+    "Ampullen": "ampoules",
+    "Beutel": "sachets",
+    # Contenants
+    "Durchstechflasche": "flacon",
+    "Durchstechflaschen": "flacons",
+    "Fertigspritze": "seringue préremplie",
+    "Fertigpen": "stylo prérempli",
+    "Patrone": "cartouche",
+    "Vernebler": "nébuliseur",
+    "Einzeldosisbehältnis": "récipient unidose",
+    "Inhalator": "inhalateur",
+    "Einzeldosiertes": "unidosé",
+    "Fertigspritzen": "seringues préremplies",
+    "Fertiginjektor": "injecteur prérempli",
+    "Multidosen-Pulverinhalator": "inhalateur de poudre multidose",
+    "Pulverinhalator": "inhalateur de poudre",
+    "Dampfs": "vapeur",
+    "Dampf": "vapeur",
+    "Kautabletten": "comprimés à croquer",
+    "dispergierbare": "dispersibles",
+    "sublingualen": "sublinguale",
+    "sublingual": "sublingual",
+    "Emulsions-gel": "gel émulsion",
+    "Lyophilisat": "lyophilisat",
+    "Depot": "dépôt",
+    # Voies et qualificatifs
+    "Inhalieren": "inhalation",
+    "Inhalation": "inhalation",
+    "Einreiben": "friction",
+    "Einnehmen": "voie orale",
+    "Anwendung": "application",
+    "Haut": "peau",
+    "Mundhöhle": "cavité buccale",
+    "Herstellung": "préparation",
+    "magensaftresistente": "gastro-résistants",
+    "retardiert": "à libération prolongée",
+    "steril": "stérile",
+    # Liaisons
+    "und": "et",
+    "oder": "ou",
+    "mit": "avec",
+    "zur": "pour",
+    "zum": "pour",
+    "für": "pour",
+    "einer": "une",
+    "einem": "un",
+    "eines": "un",
+    "einen": "un",
+    "in": "en",
+    "im": "en",
+    "auf": "sur",
+    "der": "la",
+    "des": "du",
+    "von": "de",
+}
+
 _FORMES_FOLD = {k.lower(): v for k, v in FORMES.items()}
-_FORMES_TRI = sorted(FORMES.items(), key=lambda kv: -len(kv[0]))
+_VOCAB_TRI = sorted(VOCABULAIRE.items(), key=lambda kv: -len(kv[0]))
+
+
+def _traduire_mots(texte: str) -> str:
+    """Vocabulaire appliqué mot à mot, frontières de mot obligatoires."""
+    for de, fr in _VOCAB_TRI:
+        texte = re.sub(rf"\b{re.escape(de)}\b", fr, texte, flags=re.I)
+    # « pour une préparation de … » se lit mal : on allège les liaisons vides.
+    texte = re.sub(r"\bpour une préparation d[eu]\b", "pour", texte, flags=re.I)
+    texte = re.sub(r"\s{2,}", " ", texte).strip()
+    return texte
 
 
 def traduire_nom(name: str) -> str:
@@ -205,14 +325,11 @@ def traduire_nom(name: str) -> str:
     suffixe = suffixe.strip()
     traduit = _FORMES_FOLD.get(suffixe.lower())
     if traduit is None:
-        # Repli : les entrées de la table, appliquées en sous-chaînes de la
-        # plus longue à la plus courte, puis les retouches. « Injektionslösung
-        # zur Behandlung von X » devient au moins « solution injectable … ».
+        # Repli mot à mot pour les formes composées absentes de la table.
         traduit = suffixe
-        for de, fr in _FORMES_TRI:
-            traduit = re.sub(re.escape(de), fr, traduit, flags=re.I)
         for motif, remplacement in _RETOUCHES:
             traduit = motif.sub(remplacement, traduit)
+        traduit = _traduire_mots(traduit)
     return f"{marque}, {traduit}"
 
 
