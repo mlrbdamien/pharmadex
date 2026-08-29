@@ -51,14 +51,14 @@ export function Medicaments() {
         .order('name_fr', { nullsFirst: false })
         .limit(pages * PAGE);
       if (groupe) query = query.like('atc_code', `${groupe}%`);
-      const needle = filtre.trim();
-      if (needle) {
-        // Filtre serveur large ; l'affinage insensible aux accents se fait
-        // en local sur la page reçue (fold), le serveur n'ayant pas unaccent
-        // exposé via PostgREST.
-        query = query.or(
-          `name_fr.ilike.%${needle}%,name.ilike.%${needle}%,substances.ilike.%${needle}%`,
-        );
+      // Un groupe or() PAR MOT : les groupes se cumulent en ET, donc chaque
+      // mot tapé doit apparaître quelque part — « ib sandoz » trouve
+      // Ibuprofen Sandoz. L'affinage insensible aux accents reste local.
+      for (const mot of filtre.trim().split(/\s+/).filter(Boolean)) {
+        const m = mot.replace(/[%,().]/g, '');
+        if (m) {
+          query = query.or(`name_fr.ilike.%${m}%,name.ilike.%${m}%,substances.ilike.%${m}%`);
+        }
       }
       const { data, count } = await query;
       if (id !== requestId.current) return;
@@ -77,9 +77,11 @@ export function Medicaments() {
   const visibles = useMemo(() => {
     const needle = fold(filtre.trim());
     if (!needle) return rows;
-    return rows.filter((p) =>
-      fold(`${p.name_fr ?? ''} ${p.name} ${p.substances ?? ''}`).includes(needle),
-    );
+    const mots = needle.split(/\s+/).filter(Boolean);
+    return rows.filter((p) => {
+      const meule = fold(`${p.name_fr ?? ''} ${p.name} ${p.substances ?? ''}`);
+      return mots.every((mot) => meule.includes(mot));
+    });
   }, [rows, filtre]);
 
   return (
