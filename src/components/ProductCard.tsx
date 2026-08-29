@@ -37,7 +37,7 @@ export function ProductCard({ product, canEdit, onSearchName, onLinked, linked }
           <Link to={`/p/${product.authorization_nr}`}>
             <h2 className="flex items-center gap-1.5 font-semibold text-ink hover:text-accent hover:underline">
               {product.name}
-              {estAnnote(notesIndex, product.authorization_nr, product.atc_code) && (
+              {estAnnote(notesIndex, product.authorization_nr, product.atc_code, product.substances) && (
                 <StickyNote className="text-warning size-4 shrink-0" aria-label="Note maison" />
               )}
             </h2>

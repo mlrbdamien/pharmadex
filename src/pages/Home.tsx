@@ -190,7 +190,7 @@ export function Home() {
                       <span className="min-w-0 flex-1 truncate font-medium text-ink">
                         {product.name_fr || product.name}
                       </span>
-                      {estAnnote(notesIndex, product.authorization_nr, product.atc_code) && (
+                      {estAnnote(notesIndex, product.authorization_nr, product.atc_code, product.substances) && (
                         <StickyNote
                           className="text-warning size-3.5 shrink-0"
                           aria-label="Note maison"

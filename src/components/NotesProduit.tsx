@@ -3,7 +3,6 @@ import { CalendarCheck, Pencil, Plus, StickyNote, Trash2, X } from 'lucide-react
 import { cn } from './ui';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
-import { atcLevels } from '../lib/products';
 import { isStaleDate } from '../lib/resources';
 import { formatDate, todayISO } from '../lib/format';
 import {
@@ -24,9 +23,11 @@ import {
 export function NotesProduit({
   authorizationNr,
   atcCode,
+  substances,
 }: {
   authorizationNr: string;
   atcCode: string | null;
+  substances: string | null;
 }) {
   const { canEdit } = useAuth();
   const { refresh } = useStore();
@@ -34,8 +35,8 @@ export function NotesProduit({
   const [edition, setEdition] = useState<'nouvelle' | string | null>(null);
 
   const charger = useCallback(async () => {
-    setNotes(await notesPour(authorizationNr, atcCode));
-  }, [authorizationNr, atcCode]);
+    setNotes(await notesPour(authorizationNr, atcCode, substances));
+  }, [authorizationNr, atcCode, substances]);
 
   useEffect(() => {
     setEdition(null);
@@ -61,6 +62,7 @@ export function NotesProduit({
               initial={note}
               authorizationNr={authorizationNr}
               atcCode={atcCode}
+              substances={substances}
               onAnnuler={() => setEdition(null)}
               onEnregistrer={(champ) => agir(() => updateNote(note.id, champ))}
             />
@@ -78,6 +80,7 @@ export function NotesProduit({
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] opacity-75">
                   <span className="font-semibold">{TYPES_NOTES[note.note_type].label}</span>
                   {note.atc_prefix && <span className="donnee">classe {note.atc_prefix}</span>}
+                  {note.substance && <span className="italic">{note.substance}</span>}
                   <span>
                     {note.created_by.split('@')[0]} · vérifiée le {formatDate(note.verified_on)}
                   </span>
@@ -126,6 +129,7 @@ export function NotesProduit({
           <EditeurNote
             authorizationNr={authorizationNr}
             atcCode={atcCode}
+            substances={substances}
             onAnnuler={() => setEdition(null)}
             onEnregistrer={(note) => agir(() => createNote(note))}
           />
@@ -150,24 +154,34 @@ function EditeurNote({
   initial,
   authorizationNr,
   atcCode,
+  substances,
   onAnnuler,
   onEnregistrer,
 }: {
   initial?: ProductNote;
   authorizationNr: string;
   atcCode: string | null;
+  substances: string | null;
   onAnnuler: () => void;
   onEnregistrer: (note: {
     authorization_nr: string | null;
     atc_prefix: string | null;
+    substance: string | null;
     note_type: NoteType;
     body: string;
   }) => void;
 }) {
   const [type, setType] = useState<NoteType>(initial?.note_type ?? 'conseil');
   const [body, setBody] = useState(initial?.body ?? '');
-  const [cible, setCible] = useState<string>(initial?.atc_prefix ?? authorizationNr);
-  const niveaux = atcCode ? atcLevels(atcCode) : [];
+  /** 'produit' | 'atc' | 'sub:<principe>' */
+  const [cible, setCible] = useState<string>('produit');
+  // Trois portées : le produit, son code ATC complet, chacun de ses principes
+  // actifs — pas les niveaux intermédiaires, sources de rayonnement involontaire.
+  const principes = (substances ?? '')
+    .split(/[;,]/)
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x.length > 2)
+    .slice(0, 4);
   const modification = Boolean(initial);
 
   return (
@@ -195,30 +209,45 @@ function EditeurNote({
           <span className="text-ink-3 text-[12px]">Porte sur :</span>
           <button
             type="button"
-            onClick={() => setCible(authorizationNr)}
+            onClick={() => setCible('produit')}
             className={cn(
               'cursor-pointer rounded-full border px-2 py-0.5 text-[12px]',
-              cible === authorizationNr
+              cible === 'produit'
                 ? 'border-accent bg-accent text-on-accent'
                 : 'border-line text-ink-2',
             )}
           >
             ce produit
           </button>
-          {niveaux.map((prefix) => (
+          {atcCode && (
             <button
-              key={prefix}
               type="button"
-              onClick={() => setCible(prefix)}
-              title={`Toute la classe ${prefix}`}
+              onClick={() => setCible('atc')}
+              title={`Tous les produits du code ${atcCode}`}
               className={cn(
                 'donnee cursor-pointer rounded-full border px-2 py-0.5 text-[12px]',
-                cible === prefix
+                cible === 'atc'
                   ? 'border-accent bg-accent text-on-accent'
                   : 'border-line text-ink-2',
               )}
             >
-              {prefix}
+              ATC {atcCode}
+            </button>
+          )}
+          {principes.map((principe) => (
+            <button
+              key={principe}
+              type="button"
+              onClick={() => setCible(`sub:${principe}`)}
+              title={`Tous les produits contenant ${principe}`}
+              className={cn(
+                'max-w-56 cursor-pointer truncate rounded-full border px-2 py-0.5 text-[12px] italic',
+                cible === `sub:${principe}`
+                  ? 'border-accent bg-accent text-on-accent'
+                  : 'border-line text-ink-2',
+              )}
+            >
+              {principe}
             </button>
           ))}
         </div>
@@ -241,8 +270,9 @@ function EditeurNote({
           disabled={!body.trim()}
           onClick={() =>
             onEnregistrer({
-              authorization_nr: cible === authorizationNr ? authorizationNr : null,
-              atc_prefix: cible === authorizationNr ? null : cible,
+              authorization_nr: cible === 'produit' ? authorizationNr : null,
+              atc_prefix: cible === 'atc' ? atcCode : null,
+              substance: cible.startsWith('sub:') ? cible.slice(4) : null,
               note_type: type,
               body: body.trim(),
             })

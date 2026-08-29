@@ -130,8 +130,9 @@ ouvrir » va dans le mauvais sens.
   compte les formes restées en allemand — compléter la table, pas inventer
   un service de traduction.
 
-- **Notes maison** (`product_notes`, migration 0009) : sur UN produit ou UNE
-  classe ATC, type OBLIGATOIRE (vocabulaire médicament — le typage cadre
+- **Notes maison** (`product_notes`, migrations 0009+0010) : sur UN produit,
+  UN code ATC complet ou UN principe actif (appariement substance côté
+  application, champ Swissmedic en texte libre), type OBLIGATOIRE (vocabulaire médicament — le typage cadre
   l'usage : l'invariant « aucune donnée patient » tient aussi par le design),
   auteur/date visibles, fraîcheur surveillée, écriture éditeurs. Bandeaux en
   haut de fiche, marqueur ⚠ dans recherche/scan/catalogue, page /notes.

@@ -247,7 +247,7 @@ export function Medicaments() {
                     <span className="text-ink min-w-0 flex-1 truncate text-[15px]">
                       {libelleFr(product)}
                     </span>
-                    {estAnnote(notesIndex, product.authorization_nr, product.atc_code) && (
+                    {estAnnote(notesIndex, product.authorization_nr, product.atc_code, product.substances) && (
                       <StickyNote className="text-warning size-3.5 shrink-0" aria-label="Note maison" />
                     )}
                     {product.delisted && (

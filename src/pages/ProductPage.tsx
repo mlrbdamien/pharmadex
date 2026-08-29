@@ -258,7 +258,11 @@ export function ProductPage() {
         </div>
 
         {/* ---- Notes maison : impossibles à manquer ---- */}
-        <NotesProduit authorizationNr={product.authorization_nr} atcCode={product.atc_code} />
+        <NotesProduit
+          authorizationNr={product.authorization_nr}
+          atcCode={product.atc_code}
+          substances={product.substances}
+        />
 
         {/* ---- Corps : sommaire · notice · périphérie ---- */}
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">

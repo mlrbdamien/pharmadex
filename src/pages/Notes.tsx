@@ -126,9 +126,13 @@ export function Notes() {
                               <Pill size={13} className="text-accent shrink-0" />
                               {noms.get(note.authorization_nr) ?? note.authorization_nr}
                             </Link>
-                          ) : (
+                          ) : note.atc_prefix ? (
                             <span className="donnee bg-accent-soft text-accent rounded px-1.5 py-0.5 text-[12px]">
                               classe {note.atc_prefix}
+                            </span>
+                          ) : (
+                            <span className="bg-info-soft text-info-text rounded px-1.5 py-0.5 text-[12px] italic">
+                              {note.substance}
                             </span>
                           )}
                           {stale && (

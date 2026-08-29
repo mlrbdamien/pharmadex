@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { atcLevels } from './products';
+import { fold } from './resources';
 
 /**
  * Notes maison sur les médicaments — jamais sur les patients : le type
@@ -19,6 +19,7 @@ export type ProductNote = {
   id: string;
   authorization_nr: string | null;
   atc_prefix: string | null;
+  substance: string | null;
   note_type: NoteType;
   body: string;
   verified_on: string;
@@ -27,34 +28,46 @@ export type ProductNote = {
   updated_at: string;
 };
 
+// Six types, six couleurs distinctes : le bandeau prend celle du type, la
+// nature de la consigne se lit avant même son texte.
 export const TYPES_NOTES: Record<NoteType, { label: string; classes: string }> = {
   conseil: { label: 'Conseil comptoir', classes: 'bg-accent-soft text-accent' },
   conservation: { label: 'Conservation', classes: 'bg-good-soft text-good-text' },
   substitution: { label: 'Substitution', classes: 'bg-warning-soft text-warning-text' },
   disponibilite: { label: 'Disponibilité', classes: 'bg-critical-soft text-critical-text' },
   remboursement: { label: 'Remboursement', classes: 'bg-surface-2 text-ink-2' },
-  preparation: { label: 'Préparation', classes: 'bg-accent-soft text-accent' },
+  preparation: { label: 'Préparation', classes: 'bg-info-soft text-info-text' },
 };
 
 const COLONNES =
-  'id,authorization_nr,atc_prefix,note_type,body,verified_on,created_by,created_at,updated_at';
+  'id,authorization_nr,atc_prefix,substance,note_type,body,verified_on,created_by,created_at,updated_at';
 
-/** Les notes d'une fiche : celles du produit, puis celles de sa classe. */
+/**
+ * Les notes d'une fiche : celles du produit, celles dont le préfixe ATC
+ * couvre son code, celles dont le principe actif figure dans ses substances.
+ * L'appariement substance se fait ici (texte libre Swissmedic côté produit,
+ * inexprimable en filtre PostgREST) — la table des notes est petite.
+ */
 export async function notesPour(
   authorizationNr: string,
   atcCode: string | null,
+  substances: string | null,
 ): Promise<ProductNote[]> {
-  const prefixes = atcCode ? atcLevels(atcCode) : [];
-  let query = supabase.from('product_notes').select(COLONNES);
-  query = prefixes.length
-    ? query.or(
-        `authorization_nr.eq.${authorizationNr},atc_prefix.in.(${prefixes.join(',')})`,
-      )
-    : query.eq('authorization_nr', authorizationNr);
-  const { data, error } = await query.order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('product_notes')
+    .select(COLONNES)
+    .order('created_at', { ascending: false });
   if (error) return [];
+  const meule = fold(substances ?? '');
   const rows = (data ?? []) as ProductNote[];
-  return rows.sort((a, b) => Number(Boolean(b.authorization_nr)) - Number(Boolean(a.authorization_nr)));
+  return rows
+    .filter((n) => {
+      if (n.authorization_nr) return n.authorization_nr === authorizationNr;
+      if (n.atc_prefix) return Boolean(atcCode && atcCode.startsWith(n.atc_prefix));
+      if (n.substance) return meule.includes(fold(n.substance));
+      return false;
+    })
+    .sort((a, b) => Number(Boolean(b.authorization_nr)) - Number(Boolean(a.authorization_nr)));
 }
 
 export async function listAllNotes(): Promise<ProductNote[]> {
@@ -69,6 +82,7 @@ export async function listAllNotes(): Promise<ProductNote[]> {
 export async function createNote(note: {
   authorization_nr: string | null;
   atc_prefix: string | null;
+  substance: string | null;
   note_type: NoteType;
   body: string;
 }): Promise<void> {
@@ -97,6 +111,7 @@ export async function deleteNote(id: string): Promise<void> {
 export type NotesIndex = {
   auths: Set<string>;
   prefixes: string[];
+  substances: string[];
   total: number;
   aReverifier: number;
 };
@@ -104,13 +119,14 @@ export type NotesIndex = {
 export async function chargerNotesIndex(staleMonths: number): Promise<NotesIndex> {
   const { data, error } = await supabase
     .from('product_notes')
-    .select('authorization_nr,atc_prefix,verified_on');
+    .select('authorization_nr,atc_prefix,substance,verified_on');
   const rows = error ? [] : (data ?? []);
   const limite = new Date();
   limite.setMonth(limite.getMonth() - staleMonths);
   return {
     auths: new Set(rows.map((r) => r.authorization_nr).filter(Boolean) as string[]),
     prefixes: rows.map((r) => r.atc_prefix).filter(Boolean) as string[],
+    substances: (rows.map((r) => r.substance).filter(Boolean) as string[]).map(fold),
     total: rows.length,
     aReverifier: rows.filter((r) => new Date(r.verified_on) < limite).length,
   };
@@ -120,8 +136,14 @@ export function estAnnote(
   index: NotesIndex | null,
   authorizationNr: string,
   atcCode: string | null,
+  substances?: string | null,
 ): boolean {
   if (!index) return false;
   if (index.auths.has(authorizationNr)) return true;
-  return atcCode ? index.prefixes.some((p) => atcCode.startsWith(p)) : false;
+  if (atcCode && index.prefixes.some((p) => atcCode.startsWith(p))) return true;
+  if (substances && index.substances.length > 0) {
+    const meule = fold(substances);
+    return index.substances.some((sub) => meule.includes(sub));
+  }
+  return false;
 }

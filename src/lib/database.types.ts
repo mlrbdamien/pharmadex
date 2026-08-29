@@ -113,6 +113,7 @@ export type Database = {
           id: string;
           authorization_nr: string | null;
           atc_prefix: string | null;
+          substance: string | null;
           note_type: string;
           body: string;
           verified_on: string;
@@ -123,6 +124,7 @@ export type Database = {
         Insert: {
           authorization_nr?: string | null;
           atc_prefix?: string | null;
+          substance?: string | null;
           note_type: string;
           body: string;
           verified_on?: string;
