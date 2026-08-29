@@ -72,10 +72,12 @@ export function ProductPage() {
       listPackages(nr),
       linkDetails(nr, found.product.atc_code),
     ]);
-    setNotices(docs);
+    // Seule l'information professionnelle intéresse le comptoir — la notice
+    // patient redirait la même chose en moins précis (décision produit).
+    setNotices(docs.filter((n) => n.doc_type === 'SmPC'));
     setPackages(pkgs);
     setLinks(detail);
-    setActiveDoc((current) => current ?? bestByType(docs).SmPC ?? bestByType(docs).PIL ?? null);
+    setActiveDoc((current) => current ?? bestByType(docs).SmPC ?? null);
     if (found.product.atc_code) {
       setGenerics(await listGenerics(found.product.atc_code, nr));
     }
@@ -107,11 +109,20 @@ export function ProductPage() {
   // Défile l'iframe jusqu'à la rubrique. `allow-same-origin` sans
   // `allow-scripts` : aucun script de la notice ne s'exécute, mais NOUS
   // pouvons piloter son défilement depuis l'application.
+  //
+  // Surtout pas scrollIntoView : il fait défiler TOUS les ancêtres
+  // défilables, donc la page entière bougeait à chaque clic de rubrique.
+  // On ne touche qu'au défilement interne de l'iframe.
   useEffect(() => {
     if (!anchor) return;
-    noticeFrame.current?.contentDocument
-      ?.getElementById(anchor)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const frame = noticeFrame.current;
+    const doc = frame?.contentDocument;
+    const cible = doc?.getElementById(anchor);
+    if (!frame || !doc || !cible) return;
+    const haut =
+      cible.getBoundingClientRect().top +
+      (doc.documentElement.scrollTop || doc.body.scrollTop || 0);
+    frame.contentWindow?.scrollTo({ top: Math.max(0, haut - 8), behavior: 'smooth' });
   }, [anchor, noticeHtml]);
 
   async function unlink(resource: Resource) {
@@ -133,7 +144,6 @@ export function ProductPage() {
     await load();
   }
 
-  const best = bestByType(notices);
   const product = hit?.product;
 
   return (
@@ -195,28 +205,10 @@ export function ProductPage() {
             {notices.length > 0 && (
               <section>
                 <div className="flex flex-wrap items-center gap-2">
-                  {(['SmPC', 'PIL', 'PL'] as const).map((type) =>
-                    best[type] ? (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => {
-                          setActiveDoc(best[type]!);
-                          setAnchor('');
-                        }}
-                        className={`rounded-lg border px-3 py-1.5 text-sm ${
-                          activeDoc?.doc_type === type
-                            ? 'border-accent bg-accent text-on-accent'
-                            : 'border-line-strong text-ink-2 hover:border-accent'
-                        }`}
-                      >
-                        {DOC_LABELS[type]}
-                        {best[type]!.lang !== 'fr' && (
-                          <span className="ml-1 opacity-70">({best[type]!.lang})</span>
-                        )}
-                      </button>
-                    ) : null,
-                  )}
+                  <span className="etiquette">
+                    Information professionnelle
+                    {activeDoc && activeDoc.lang !== 'fr' && ` (${activeDoc.lang})`}
+                  </span>
                   {activeDoc?.pdf_url && (
                     <a
                       href={activeDoc.pdf_url}
