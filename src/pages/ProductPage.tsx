@@ -42,6 +42,7 @@ export function ProductPage() {
   const { nr } = useParams<{ nr: string }>();
   const navigate = useNavigate();
   const { canEdit } = useAuth();
+  const ouvrirMenu = useMenu();
 
   const [hit, setHit] = useState<ScanHit | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -174,7 +175,7 @@ export function ProductPage() {
   if (loading || notFound || !product) {
     return (
       <>
-        <EnteteEcran titre="Fiche médicament" onMenu={useMenu()} />
+        <EnteteEcran titre="Fiche médicament" onMenu={ouvrirMenu} />
         <main className="flex flex-1 items-center justify-center">
           {loading ? (
             <Loader2 className="text-ink-3 size-5 animate-spin" />
@@ -193,7 +194,7 @@ export function ProductPage() {
 
   return (
     <>
-      <EnteteEcran titre="Fiche médicament" onMenu={useMenu()} />
+      <EnteteEcran titre="Fiche médicament" onMenu={ouvrirMenu} />
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
         {/* ---- En-tête compact ---- */}
         <div className="border-line bg-surface-1 shrink-0 border-b px-5 py-3">
