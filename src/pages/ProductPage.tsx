@@ -238,23 +238,29 @@ export function ProductPage() {
               </span>
             )}
           </div>
-          {product.substances && (
-            <button
-              type="button"
-              onClick={() => setSubstancesOuvertes((v) => !v)}
-              className="text-ink-3 hover:text-ink-2 mt-1 flex w-full cursor-pointer items-start
-                         gap-1 pl-9 text-left text-[13px]"
-              title={substancesOuvertes ? 'Replier' : 'Déplier'}
-            >
-              <ChevronDown
-                size={13}
-                className={cn('mt-0.5 shrink-0 transition-transform', !substancesOuvertes && '-rotate-90')}
-              />
-              <span className={cn('min-w-0', !substancesOuvertes && 'truncate')}>
-                {product.substances}
-              </span>
-            </button>
-          )}
+          {product.substances &&
+            // La flèche de dépliage n'apparaît que s'il y a quelque chose à
+            // déplier — sur « ibuprofenum », un contrôle qui ne fait rien
+            // n'est que du bruit. Seuil : substances multiples ou texte long.
+            (product.substances.length > 70 || /[;,]/.test(product.substances) ? (
+              <button
+                type="button"
+                onClick={() => setSubstancesOuvertes((v) => !v)}
+                className="text-ink-3 hover:text-ink-2 mt-1 flex w-full cursor-pointer items-start
+                           gap-1 pl-9 text-left text-[13px]"
+                title={substancesOuvertes ? 'Replier' : 'Déplier'}
+              >
+                <ChevronDown
+                  size={13}
+                  className={cn('mt-0.5 shrink-0 transition-transform', !substancesOuvertes && '-rotate-90')}
+                />
+                <span className={cn('min-w-0', !substancesOuvertes && 'truncate')}>
+                  {product.substances}
+                </span>
+              </button>
+            ) : (
+              <p className="text-ink-3 mt-1 pl-9 text-[13px]">{product.substances}</p>
+            ))}
         </div>
 
         {/* ---- Notes maison : impossibles à manquer ---- */}
