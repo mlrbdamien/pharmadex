@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Link2, Pill, Search } from 'lucide-react';
+import { ExternalLink, Link2, Pill, Search, StickyNote } from 'lucide-react';
 import type { Product, Resource } from '../lib/types';
 import { LinkPicker } from './LinkPicker';
+import { useStore } from '../lib/store';
+import { estAnnote } from '../lib/notes';
 
 type Props = {
   product: Product;
@@ -24,6 +26,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export function ProductCard({ product, canEdit, onSearchName, onLinked, linked }: Props) {
   const [linking, setLinking] = useState(false);
+  const { notesIndex } = useStore();
 
   return (
     <article className="rounded-lg border border-accent-ring bg-accent-soft px-4 py-3">
@@ -32,8 +35,11 @@ export function ProductCard({ product, canEdit, onSearchName, onLinked, linked }
         <div className="min-w-0 flex-1">
           {/* Le nom ouvre la fiche complète : notice, emballages, génériques. */}
           <Link to={`/p/${product.authorization_nr}`}>
-            <h2 className="font-semibold text-ink hover:text-accent hover:underline">
+            <h2 className="flex items-center gap-1.5 font-semibold text-ink hover:text-accent hover:underline">
               {product.name}
+              {estAnnote(notesIndex, product.authorization_nr, product.atc_code) && (
+                <StickyNote className="text-warning size-4 shrink-0" aria-label="Note maison" />
+              )}
             </h2>
           </Link>
           <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-3">

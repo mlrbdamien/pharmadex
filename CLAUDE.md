@@ -130,6 +130,17 @@ ouvrir » va dans le mauvais sens.
   compte les formes restées en allemand — compléter la table, pas inventer
   un service de traduction.
 
+- **Notes maison** (`product_notes`, migration 0009) : sur UN produit ou UNE
+  classe ATC, type OBLIGATOIRE (vocabulaire médicament — le typage cadre
+  l'usage : l'invariant « aucune donnée patient » tient aussi par le design),
+  auteur/date visibles, fraîcheur surveillée, écriture éditeurs. Bandeaux en
+  haut de fiche, marqueur ⚠ dans recherche/scan/catalogue, page /notes.
+- **Fiche = lecteur de notice** : sommaire vertical avec suivi de lecture,
+  notice pleine hauteur, périphérie en panneau droit. PAS de bouton PDF ni de
+  notice patient (retirés sur décision produit). Badge de catégorie coloré.
+- **Catalogue** : arborescence ATC navigable (niveaux 1→3→4→5→7, compteurs
+  calculés depuis les codes réels), filtre par catégorie de remise A/B/D/E.
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
 - Recherche plein texte DANS les notices (elles restent chez Refdata).

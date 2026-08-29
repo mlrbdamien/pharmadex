@@ -8,6 +8,8 @@ export type Compteurs = {
   ressources: number;
   liensCasses: number;
   aReverifier: number;
+  notes: number;
+  notesAReverifier: number;
   produits: number | null;
   /** null tant qu'inconnu — et pour le comptoir, dont la RLS interdit ce count. */
   recherchesVides: number | null;
@@ -20,7 +22,7 @@ export type Compteurs = {
  * jamais un point de rupture.
  */
 export function useCompteurs(): Compteurs {
-  const { resources } = useStore();
+  const { resources, notesIndex } = useStore();
   const { canEdit } = useAuth();
   const [produits, setProduits] = useState<number | null>(null);
   const [recherchesVides, setRecherchesVides] = useState<number | null>(null);
@@ -44,6 +46,8 @@ export function useCompteurs(): Compteurs {
     ressources: resources.length,
     liensCasses: resources.filter((r) => r.broken).length,
     aReverifier: resources.filter((r) => !r.broken && isStale(r)).length,
+    notes: notesIndex?.total ?? 0,
+    notesAReverifier: notesIndex?.aReverifier ?? 0,
     produits,
     recherchesVides,
   };

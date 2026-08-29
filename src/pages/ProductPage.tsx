@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ChevronDown,
   ExternalLink,
-  FileText,
   Link2,
   Loader2,
   Pill,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { ResourceCard } from '../components/ResourceCard';
+import { NotesProduit } from '../components/NotesProduit';
 import { LinkPicker } from '../components/LinkPicker';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -257,6 +257,9 @@ export function ProductPage() {
           )}
         </div>
 
+        {/* ---- Notes maison : impossibles à manquer ---- */}
+        <NotesProduit authorizationNr={product.authorization_nr} atcCode={product.atc_code} />
+
         {/* ---- Corps : sommaire · notice · périphérie ---- */}
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {/* Sommaire des rubriques */}
@@ -286,17 +289,6 @@ export function ProductPage() {
                     </button>
                   );
                 })}
-                {activeDoc?.pdf_url && (
-                  <a
-                    href={activeDoc.pdf_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-ink-3 hover:text-ink rounded-control mt-1 flex shrink-0 items-center
-                               gap-1.5 px-2.5 py-1.5 text-[13px] lg:mt-3"
-                  >
-                    <FileText size={14} /> PDF
-                  </a>
-                )}
               </div>
             </nav>
           )}

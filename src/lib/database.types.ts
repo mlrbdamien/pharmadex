@@ -108,6 +108,32 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      product_notes: {
+        Row: {
+          id: string;
+          authorization_nr: string | null;
+          atc_prefix: string | null;
+          note_type: string;
+          body: string;
+          verified_on: string;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          authorization_nr?: string | null;
+          atc_prefix?: string | null;
+          note_type: string;
+          body: string;
+          verified_on?: string;
+        };
+        Update: {
+          note_type?: string;
+          body?: string;
+          verified_on?: string;
+        };
+        Relationships: [];
+      };
       search_misses: {
         Row: {
           term: string;

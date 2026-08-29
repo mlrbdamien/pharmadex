@@ -61,7 +61,11 @@ export const STALE_MONTHS = 12;
  * et en officine, un protocole périmé est plus dangereux qu'un lien mort.
  */
 export function isStale(resource: Resource): boolean {
-  const reference = resource.verified_on ?? resource.created_at;
+  return isStaleDate(resource.verified_on ?? resource.created_at);
+}
+
+/** Même règle de fraîcheur, pour toute date (notes, ressources…). */
+export function isStaleDate(reference: string): boolean {
   const date = new Date(reference);
   if (Number.isNaN(date.getTime())) return false;
   const limite = new Date();

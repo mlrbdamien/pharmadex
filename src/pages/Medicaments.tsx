@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Pill, Search } from 'lucide-react';
+import { Loader2, Pill, Search, StickyNote } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { supabase } from '../lib/supabase';
 import { libelleFr } from '../lib/products';
+import { useStore } from '../lib/store';
+import { estAnnote } from '../lib/notes';
 import { fold } from '../lib/resources';
 import { cn } from '../components/ui';
 import type { ProductRow } from '../lib/types';
 
 const PAGE = 50;
+
+const CATEGORIES_REMISE: Record<string, string> = {
+  A: 'A — ordonnance non renouvelable',
+  B: 'B — sur ordonnance',
+  D: 'D — conseil spécialisé',
+  E: 'E — vente libre',
+};
 
 /** Les 14 groupes anatomiques principaux de la classification ATC. */
 const GROUPES_ATC: { code: string; libelle: string }[] = [
@@ -33,8 +42,11 @@ const GROUPES_ATC: { code: string; libelle: string }[] = [
  * groupes ATC, pagination. Chaque ligne mène à la fiche.
  */
 export function Medicaments() {
+  const { notesIndex } = useStore();
   const [filtre, setFiltre] = useState('');
-  const [groupe, setGroupe] = useState<string | null>(null);
+  const [atcPrefix, setAtcPrefix] = useState('');
+  const [cat, setCat] = useState<string | null>(null);
+  const [enfants, setEnfants] = useState<{ code: string; n: number }[]>([]);
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [pages, setPages] = useState(1);
@@ -50,7 +62,8 @@ export function Medicaments() {
         .select('*', { count: 'exact' })
         .order('name_fr', { nullsFirst: false })
         .limit(pages * PAGE);
-      if (groupe) query = query.like('atc_code', `${groupe}%`);
+      if (atcPrefix) query = query.like('atc_code', `${atcPrefix}%`);
+      if (cat) query = query.eq('category', cat);
       // Un groupe or() PAR MOT : les groupes se cumulent en ET, donc chaque
       // mot tapé doit apparaître quelque part — « ib sandoz » trouve
       // Ibuprofen Sandoz. L'affinage insensible aux accents reste local.
@@ -67,12 +80,42 @@ export function Medicaments() {
       setChargement(false);
     }, 200);
     return () => clearTimeout(timer);
-  }, [filtre, groupe, pages]);
+  }, [filtre, atcPrefix, cat, pages]);
 
   // Repartir en page 1 quand le filtre change.
   useEffect(() => {
     setPages(1);
-  }, [filtre, groupe]);
+  }, [filtre, atcPrefix, cat]);
+
+  // Les enfants du niveau ATC courant, avec compteurs — calculés depuis les
+  // codes réels de la base, pas depuis une nomenclature théorique : seuls
+  // les niveaux peuplés s'affichent. Longueurs des niveaux ATC : 1, 3, 4, 5, 7.
+  useEffect(() => {
+    const suivant: Record<number, number> = { 0: 1, 1: 3, 3: 4, 4: 5, 5: 7 };
+    const longueur = suivant[atcPrefix.length];
+    if (!longueur) {
+      setEnfants([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      let query = supabase.from('products').select('atc_code').not('atc_code', 'is', null);
+      if (atcPrefix) query = query.like('atc_code', `${atcPrefix}%`);
+      const { data } = await query.limit(10000);
+      if (cancelled) return;
+      const comptes = new Map<string, number>();
+      for (const row of data ?? []) {
+        const code = (row.atc_code as string).slice(0, longueur);
+        if (code.length === longueur) comptes.set(code, (comptes.get(code) ?? 0) + 1);
+      }
+      setEnfants(
+        [...comptes.entries()].map(([code, n]) => ({ code, n })).sort((a, b) => (a.code < b.code ? -1 : 1)),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [atcPrefix]);
 
   const visibles = useMemo(() => {
     const needle = fold(filtre.trim());
@@ -109,28 +152,79 @@ export function Medicaments() {
             />
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {GROUPES_ATC.map((g) => {
-              const actif = groupe === g.code;
-              return (
+          {/* Arborescence ATC : cliquer un niveau descend, le fil d'Ariane remonte. */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {atcPrefix && (
+              <>
                 <button
-                  key={g.code}
                   type="button"
-                  aria-pressed={actif}
-                  onClick={() => setGroupe(actif ? null : g.code)}
-                  title={g.libelle}
-                  className={cn(
-                    'rounded-full border px-2.5 py-1 text-[13px] transition-colors',
-                    actif
-                      ? 'border-accent bg-accent text-on-accent'
-                      : 'border-line bg-surface-1 text-ink-2 hover:border-accent-ring hover:text-ink',
-                  )}
+                  onClick={() => setAtcPrefix('')}
+                  className="border-line bg-surface-1 text-ink-2 hover:text-ink cursor-pointer
+                             rounded-full border px-2.5 py-1 text-[13px]"
                 >
-                  <span className="donnee font-semibold">{g.code}</span>
-                  <span className="ml-1.5 hidden sm:inline">{g.libelle}</span>
+                  Tous
                 </button>
-              );
-            })}
+                {[1, 3, 4, 5].map((longueur) =>
+                  atcPrefix.length > longueur ? (
+                    <button
+                      key={longueur}
+                      type="button"
+                      onClick={() => setAtcPrefix(atcPrefix.slice(0, longueur))}
+                      className="border-line bg-surface-1 donnee text-ink-2 hover:text-ink
+                                 cursor-pointer rounded-full border px-2.5 py-1 text-[13px]"
+                    >
+                      {atcPrefix.slice(0, longueur)}
+                    </button>
+                  ) : null,
+                )}
+                <span className="donnee bg-accent text-on-accent rounded-full px-2.5 py-1 text-[13px] font-semibold">
+                  {atcPrefix}
+                  {GROUPES_ATC.find((g) => g.code === atcPrefix) &&
+                    ` ${GROUPES_ATC.find((g) => g.code === atcPrefix)!.libelle}`}
+                </span>
+                <span className="text-ink-3 mx-0.5">›</span>
+              </>
+            )}
+            {enfants.map((enfant) => (
+              <button
+                key={enfant.code}
+                type="button"
+                onClick={() => setAtcPrefix(enfant.code)}
+                title={GROUPES_ATC.find((g) => g.code === enfant.code)?.libelle}
+                className="border-line bg-surface-1 text-ink-2 hover:border-accent-ring hover:text-ink
+                           cursor-pointer rounded-full border px-2.5 py-1 text-[13px] transition-colors"
+              >
+                <span className="donnee font-semibold">{enfant.code}</span>
+                {atcPrefix === '' && (
+                  <span className="ml-1.5 hidden sm:inline">
+                    {GROUPES_ATC.find((g) => g.code === enfant.code)?.libelle}
+                  </span>
+                )}
+                <span className="donnee text-ink-3 ml-1.5">{enfant.n}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Catégorie de remise */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-ink-3 text-[12px]">Remise :</span>
+            {(['A', 'B', 'D', 'E'] as const).map((lettre) => (
+              <button
+                key={lettre}
+                type="button"
+                aria-pressed={cat === lettre}
+                onClick={() => setCat(cat === lettre ? null : lettre)}
+                title={CATEGORIES_REMISE[lettre]}
+                className={cn(
+                  'donnee cursor-pointer rounded-full border px-2.5 py-0.5 text-[13px] font-semibold transition-colors',
+                  cat === lettre
+                    ? 'border-accent bg-accent text-on-accent'
+                    : 'border-line bg-surface-1 text-ink-2 hover:border-accent-ring',
+                )}
+              >
+                {lettre}
+              </button>
+            ))}
           </div>
 
           {chargement ? (
@@ -153,6 +247,9 @@ export function Medicaments() {
                     <span className="text-ink min-w-0 flex-1 truncate text-[15px]">
                       {libelleFr(product)}
                     </span>
+                    {estAnnote(notesIndex, product.authorization_nr, product.atc_code) && (
+                      <StickyNote className="text-warning size-3.5 shrink-0" aria-label="Note maison" />
+                    )}
                     {product.delisted && (
                       <span className="bg-warning-soft text-warning-text shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium">
                         retiré

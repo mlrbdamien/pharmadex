@@ -7,6 +7,7 @@ import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { Medicaments } from './pages/Medicaments';
 import { Ressources } from './pages/Ressources';
+import { Notes } from './pages/Notes';
 import { ResourceForm } from './pages/ResourceForm';
 import { ResourcePage } from './pages/ResourcePage';
 import { ProductPage } from './pages/ProductPage';
@@ -56,6 +57,7 @@ function Gate() {
           <Route path="/" element={<Home />} />
           <Route path="/medicaments" element={<Medicaments />} />
           <Route path="/ressources" element={<Ressources />} />
+          <Route path="/notes" element={<Notes />} />
           <Route path="/r/:id" element={<ResourcePage />} />
           <Route path="/p/:nr" element={<ProductPage />} />
           <Route

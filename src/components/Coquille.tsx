@@ -14,6 +14,7 @@ import {
   Pill,
   Plus,
   Search,
+  StickyNote,
   BookMarked,
   type LucideIcon,
 } from 'lucide-react';
@@ -59,6 +60,13 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
         icone: BookMarked,
         compteur: (c) => c.ressources || null,
         alerte: (c) => c.liensCasses > 0 || c.aReverifier > 0,
+      },
+      {
+        to: '/notes',
+        libelle: 'Notes',
+        icone: StickyNote,
+        compteur: (c) => c.notes || null,
+        alerte: (c) => c.notesAReverifier > 0,
       },
     ],
   },

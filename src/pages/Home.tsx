@@ -7,6 +7,7 @@ import { ResourceCard } from '../components/ResourceCard';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
+import { estAnnote } from '../lib/notes';
 import {
   localFilter,
   logSearchMiss,
@@ -15,12 +16,12 @@ import {
 } from '../lib/resources';
 import { normalizeScannedCode, scanGtin, searchProducts } from '../lib/products';
 import { ProductCard } from '../components/ProductCard';
-import { Pill } from 'lucide-react';
+import { Pill, StickyNote } from 'lucide-react';
 import type { ProductRow, Resource, ScanHit } from '../lib/types';
 
 export function Home() {
   const { canEdit } = useAuth();
-  const { resources, tags, loading, error, refresh } = useStore();
+  const { resources, tags, notesIndex, loading, error, refresh } = useStore();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
@@ -187,8 +188,14 @@ export function Home() {
                     >
                       <Pill className="size-4 shrink-0 text-accent" aria-hidden />
                       <span className="min-w-0 flex-1 truncate font-medium text-ink">
-                        {product.name}
+                        {product.name_fr || product.name}
                       </span>
+                      {estAnnote(notesIndex, product.authorization_nr, product.atc_code) && (
+                        <StickyNote
+                          className="text-warning size-3.5 shrink-0"
+                          aria-label="Note maison"
+                        />
+                      )}
                       {product.atc_code && (
                         <span className="shrink-0 font-mono text-xs text-ink-3">
                           {product.atc_code}
