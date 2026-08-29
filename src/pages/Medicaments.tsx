@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { libelleFr } from '../lib/products';
 import { useStore } from '../lib/store';
 import { estAnnote } from '../lib/notes';
+import { enfantsDe, LIBELLES_ATC, tousLesCodesAtc } from '../lib/atc';
 import { fold } from '../lib/resources';
 import { cn } from '../components/ui';
 import type { ProductRow } from '../lib/types';
@@ -87,31 +88,14 @@ export function Medicaments() {
     setPages(1);
   }, [filtre, atcPrefix, cat]);
 
-  // Les enfants du niveau ATC courant, avec compteurs — calculés depuis les
-  // codes réels de la base, pas depuis une nomenclature théorique : seuls
-  // les niveaux peuplés s'affichent. Longueurs des niveaux ATC : 1, 3, 4, 5, 7.
+  // Les enfants du niveau ATC courant, avec compteurs, depuis le cache
+  // complet des codes (chargé par pages de 1 000 : Supabase tronque toute
+  // réponse au-delà — un limit(10000) avait silencieusement amputé l'arbre).
   useEffect(() => {
-    const suivant: Record<number, number> = { 0: 1, 1: 3, 3: 4, 4: 5, 5: 7 };
-    const longueur = suivant[atcPrefix.length];
-    if (!longueur) {
-      setEnfants([]);
-      return;
-    }
     let cancelled = false;
-    void (async () => {
-      let query = supabase.from('products').select('atc_code').not('atc_code', 'is', null);
-      if (atcPrefix) query = query.like('atc_code', `${atcPrefix}%`);
-      const { data } = await query.limit(10000);
-      if (cancelled) return;
-      const comptes = new Map<string, number>();
-      for (const row of data ?? []) {
-        const code = (row.atc_code as string).slice(0, longueur);
-        if (code.length === longueur) comptes.set(code, (comptes.get(code) ?? 0) + 1);
-      }
-      setEnfants(
-        [...comptes.entries()].map(([code, n]) => ({ code, n })).sort((a, b) => (a.code < b.code ? -1 : 1)),
-      );
-    })();
+    void tousLesCodesAtc().then((codes) => {
+      if (!cancelled) setEnfants(enfantsDe(codes, atcPrefix));
+    });
     return () => {
       cancelled = true;
     };
@@ -177,10 +161,9 @@ export function Medicaments() {
                     </button>
                   ) : null,
                 )}
-                <span className="donnee bg-accent text-on-accent rounded-full px-2.5 py-1 text-[13px] font-semibold">
-                  {atcPrefix}
-                  {GROUPES_ATC.find((g) => g.code === atcPrefix) &&
-                    ` ${GROUPES_ATC.find((g) => g.code === atcPrefix)!.libelle}`}
+                <span className="bg-accent text-on-accent rounded-full px-2.5 py-1 text-[13px] font-semibold">
+                  <span className="donnee">{atcPrefix}</span>
+                  {LIBELLES_ATC[atcPrefix] && ` ${LIBELLES_ATC[atcPrefix]}`}
                 </span>
                 <span className="text-ink-3 mx-0.5">›</span>
               </>
@@ -190,15 +173,13 @@ export function Medicaments() {
                 key={enfant.code}
                 type="button"
                 onClick={() => setAtcPrefix(enfant.code)}
-                title={GROUPES_ATC.find((g) => g.code === enfant.code)?.libelle}
+                title={LIBELLES_ATC[enfant.code]}
                 className="border-line bg-surface-1 text-ink-2 hover:border-accent-ring hover:text-ink
                            cursor-pointer rounded-full border px-2.5 py-1 text-[13px] transition-colors"
               >
                 <span className="donnee font-semibold">{enfant.code}</span>
-                {atcPrefix === '' && (
-                  <span className="ml-1.5 hidden sm:inline">
-                    {GROUPES_ATC.find((g) => g.code === enfant.code)?.libelle}
-                  </span>
+                {LIBELLES_ATC[enfant.code] && (
+                  <span className="ml-1.5 hidden sm:inline">{LIBELLES_ATC[enfant.code]}</span>
                 )}
                 <span className="donnee text-ink-3 ml-1.5">{enfant.n}</span>
               </button>
