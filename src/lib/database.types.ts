@@ -59,6 +59,8 @@ export type Database = {
           atc_code: string | null;
           substances: string | null;
           category: string | null;
+          name_fr: string | null;
+          fr_source: string | null;
           imported_at: string;
         };
         Insert: never; // rempli par l'import (service_role) uniquement
@@ -71,6 +73,9 @@ export type Database = {
           authorization_nr: string;
           pack_code: string;
           description: string | null;
+          description_fr: string | null;
+          price_public: number | null;
+          pharmacode: string | null;
         };
         Insert: never;
         Update: never;

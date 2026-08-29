@@ -103,6 +103,18 @@ ouvrir » va dans le mauvais sens.
   fiche ont été ESSAYÉS PUIS RETIRÉS (décision Damien) : la francisation
   des noms latins était trop approximative. Ne pas les réintroduire.
 
+- **Données françaises officielles**, par ordre de priorité à l'import :
+  1. `scripts/import_refdata.py` — Refdatabase-articles (clé `REFDATA_API_KEY`,
+     en-tête `X-API-Key`, portail developer.refdata.ch) : dénominations
+     officielles FR pour ~79 % des emballages, + prix publics.
+  2. `scripts/import_sl.py` — Liste des spécialités OFSP : comble les
+     remboursés que Refdata n'a pas, + prix.
+  3. `scripts/formes_fr.py` — table de traduction, repli final.
+  `products.fr_source` dit qui a rempli `name_fr` ; on n'écrase jamais une
+  donnée de rang supérieur. **Le Pharmacode n'existe PAS dans ces sources** :
+  Refdata a migré vers le GTIN comme identifiant, la v2.0 ne l'expose plus.
+  La colonne `packages.pharmacode` et sa résolution dans `scan_gtin` sont en
+  place si une source apparaît.
 - **Traduction allemand → français à l'import** (`scripts/formes_fr.py`) :
   Swissmedic ne publie ses données qu'en allemand ; l'import traduit les
   suffixes de forme et les unités d'emballage via une table déterministe

@@ -347,8 +347,15 @@ export function ProductPage() {
                   <tbody>
                     {packages.map((pkg) => (
                       <tr key={pkg.gtin} className="border-b border-line">
-                        <td className="py-1.5 text-ink-2">{pkg.description || '—'}</td>
-                        <td className="py-1.5 text-right font-mono text-xs text-ink-3">
+                        <td className="py-1.5 text-ink-2">
+                          {pkg.description_fr || pkg.description || '—'}
+                        </td>
+                        <td className="py-1.5 text-right text-ink-2 tabular">
+                          {pkg.price_public != null
+                            ? `${pkg.price_public.toFixed(2)} CHF`
+                            : ''}
+                        </td>
+                        <td className="donnee py-1.5 pl-3 text-right text-xs text-ink-3">
                           {pkg.gtin}
                         </td>
                       </tr>

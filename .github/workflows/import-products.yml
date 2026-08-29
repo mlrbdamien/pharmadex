@@ -32,6 +32,20 @@ jobs:
           python3 scripts/import_notices.py --out-dir /tmp/import
           wc -l /tmp/import/notices.csv
 
+      - name: Générer les dénominations françaises (Refdatabase-articles)
+        env:
+          REFDATA_API_KEY: ${{ secrets.REFDATA_API_KEY }}
+        run: |
+          set -euo pipefail
+          python3 scripts/import_refdata.py --out-dir /tmp/import
+          wc -l /tmp/import/refdata_fr.csv
+
+      - name: Générer les données françaises (Liste des spécialités OFSP)
+        run: |
+          set -euo pipefail
+          python3 scripts/import_sl.py --out-dir /tmp/import
+          wc -l /tmp/import/sl_fr.csv
+
       - name: Upsert vers Postgres
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -63,6 +77,53 @@ jobs:
             set authorization_nr = excluded.authorization_nr,
                 pack_code = excluded.pack_code, description = excluded.description;
 
+          -- Refdata d'abord : dénominations officielles, 79 % des emballages.
+          create temp table staging_rd (gtin text, name_fr text,
+                                        description_fr text, price_public text);
+          \copy staging_rd from '/import/refdata_fr.csv' with (format csv, header true)
+
+          update public.packages k
+             set description_fr = r.description_fr,
+                 price_public   = nullif(r.price_public, '')::numeric
+            from staging_rd r
+           where k.gtin = r.gtin;
+
+          -- Nom de produit : le plus court parmi ses emballages, comme pour la
+          -- liste Swissmedic — celui qui porte le moins de variations.
+          update public.products p
+             set name_fr   = c.name_fr,
+                 fr_source = 'refdata'
+            from (
+              select distinct on (k.authorization_nr)
+                     k.authorization_nr, r.name_fr
+                from staging_rd r
+                join public.packages k on k.gtin = r.gtin
+               order by k.authorization_nr, length(r.name_fr), r.name_fr
+            ) c
+           where p.authorization_nr = c.authorization_nr;
+
+          create temp table staging_sl (gtin text, name_fr text,
+                                        description_fr text, price_public text);
+          \copy staging_sl from '/import/sl_fr.csv' with (format csv, header true)
+
+          -- Dénomination française officielle : elle prime sur la traduction
+          -- par table. La priorité 'refdata' > 'sl' > 'table' est portée par
+          -- fr_source ; on n'écrase jamais une donnée Refdata par une donnée SL.
+          update public.packages k
+             set description_fr = coalesce(k.description_fr, s.description_fr),
+                 price_public   = coalesce(k.price_public,
+                                           nullif(s.price_public, '')::numeric)
+            from staging_sl s
+           where k.gtin = s.gtin;
+
+          update public.products p
+             set name_fr   = s.name_fr,
+                 fr_source = 'sl'
+            from staging_sl s
+            join public.packages k on k.gtin = s.gtin
+           where p.authorization_nr = k.authorization_nr
+             and coalesce(p.fr_source, '') <> 'refdata';
+
           create temp table staging_notices (like public.notices);
           \copy staging_notices from '/import/notices.csv' with (format csv, header true)
           insert into public.notices
@@ -77,6 +138,10 @@ jobs:
           select count(*) as produits_total from public.products;
           select count(*) as emballages_total from public.packages;
           select count(*) as notices_total from public.notices;
+          select count(*) as noms_francais_officiels from public.products where name_fr is not null;
+          select count(*) as prix_publics from public.packages where price_public is not null;
+          select fr_source, count(*) from public.products
+           where name_fr is not null group by fr_source order by 2 desc;
           SQL
 
       - name: Résumé

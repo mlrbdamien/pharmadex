@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Loader2, Pill, Search } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { supabase } from '../lib/supabase';
+import { libelleFr } from '../lib/products';
 import { fold } from '../lib/resources';
 import { cn } from '../components/ui';
 import type { ProductRow } from '../lib/types';
@@ -47,7 +48,7 @@ export function Medicaments() {
       let query = supabase
         .from('products')
         .select('*', { count: 'exact' })
-        .order('name')
+        .order('name_fr', { nullsFirst: false })
         .limit(pages * PAGE);
       if (groupe) query = query.like('atc_code', `${groupe}%`);
       const needle = filtre.trim();
@@ -55,7 +56,9 @@ export function Medicaments() {
         // Filtre serveur large ; l'affinage insensible aux accents se fait
         // en local sur la page reçue (fold), le serveur n'ayant pas unaccent
         // exposé via PostgREST.
-        query = query.or(`name.ilike.%${needle}%,substances.ilike.%${needle}%`);
+        query = query.or(
+          `name_fr.ilike.%${needle}%,name.ilike.%${needle}%,substances.ilike.%${needle}%`,
+        );
       }
       const { data, count } = await query;
       if (id !== requestId.current) return;
@@ -74,7 +77,9 @@ export function Medicaments() {
   const visibles = useMemo(() => {
     const needle = fold(filtre.trim());
     if (!needle) return rows;
-    return rows.filter((p) => fold(`${p.name} ${p.substances ?? ''}`).includes(needle));
+    return rows.filter((p) =>
+      fold(`${p.name_fr ?? ''} ${p.name} ${p.substances ?? ''}`).includes(needle),
+    );
   }, [rows, filtre]);
 
   return (
@@ -143,7 +148,9 @@ export function Medicaments() {
                                last:border-0"
                   >
                     <Pill size={15} className="text-accent shrink-0" aria-hidden />
-                    <span className="text-ink min-w-0 flex-1 truncate text-[15px]">{product.name}</span>
+                    <span className="text-ink min-w-0 flex-1 truncate text-[15px]">
+                      {libelleFr(product)}
+                    </span>
                     <span className="text-ink-3 hidden w-64 shrink-0 truncate text-[13px] lg:inline">
                       {product.substances}
                     </span>

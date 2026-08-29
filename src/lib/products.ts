@@ -128,12 +128,24 @@ export type PackageRow = {
   authorization_nr: string;
   pack_code: string;
   description: string | null;
+  description_fr: string | null;
+  price_public: number | null;
 };
+
+/**
+ * Le libellé à afficher : la dénomination officielle française quand elle
+ * existe (Refdata, puis OFSP), sinon la donnée Swissmedic traduite par table.
+ */
+export function libelleFr<T extends { name?: string | null; name_fr?: string | null }>(
+  ligne: T,
+): string {
+  return ligne.name_fr || ligne.name || '';
+}
 
 export async function listPackages(authorizationNr: string): Promise<PackageRow[]> {
   const { data, error } = await supabase
     .from('packages')
-    .select('gtin,authorization_nr,pack_code,description')
+    .select('gtin,authorization_nr,pack_code,description,description_fr,price_public')
     .eq('authorization_nr', authorizationNr)
     .order('pack_code');
   if (error) throw error;
