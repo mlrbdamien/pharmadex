@@ -20,23 +20,6 @@ const CATEGORIES_REMISE: Record<string, string> = {
   E: 'E — vente libre',
 };
 
-/** Les 14 groupes anatomiques principaux de la classification ATC. */
-const GROUPES_ATC: { code: string; libelle: string }[] = [
-  { code: 'A', libelle: 'Digestif' },
-  { code: 'B', libelle: 'Sang' },
-  { code: 'C', libelle: 'Cardiovasculaire' },
-  { code: 'D', libelle: 'Dermatologie' },
-  { code: 'G', libelle: 'Génito-urinaire' },
-  { code: 'H', libelle: 'Hormones' },
-  { code: 'J', libelle: 'Anti-infectieux' },
-  { code: 'L', libelle: 'Antinéoplasiques' },
-  { code: 'M', libelle: 'Musculo-squelettique' },
-  { code: 'N', libelle: 'Système nerveux' },
-  { code: 'P', libelle: 'Antiparasitaires' },
-  { code: 'R', libelle: 'Respiratoire' },
-  { code: 'S', libelle: 'Organes sensoriels' },
-  { code: 'V', libelle: 'Divers' },
-];
 
 /**
  * Le catalogue des 6 300 médicaments autorisés, navigable : filtre texte,
