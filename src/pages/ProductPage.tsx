@@ -5,6 +5,7 @@ import { ResourceCard } from '../components/ResourceCard';
 import { LinkPicker } from '../components/LinkPicker';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import {
   linkDetails,
   listGenerics,
@@ -47,6 +48,7 @@ export function ProductPage() {
   const [anchor, setAnchor] = useState('');
   const noticeFrame = useRef<HTMLIFrameElement>(null);
   const [linking, setLinking] = useState(false);
+  const [delisted, setDelisted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -59,6 +61,12 @@ export function ProductPage() {
       return;
     }
     setHit(found);
+    void supabase
+      .from('products')
+      .select('delisted')
+      .eq('authorization_nr', nr)
+      .maybeSingle()
+      .then(({ data }) => setDelisted(Boolean(data?.delisted)));
     const [docs, pkgs, detail] = await Promise.all([
       listNotices(nr),
       listPackages(nr),
@@ -156,7 +164,14 @@ export function ProductPage() {
               <div className="flex items-start gap-3">
                 <Pill className="mt-1 size-6 shrink-0 text-accent" aria-hidden />
                 <div>
-                  <h1 className="text-xl font-semibold text-ink">{product.name}</h1>
+                  <h1 className="flex items-center gap-2 text-xl font-semibold text-ink">
+                    {product.name}
+                    {delisted && (
+                      <span className="bg-warning-soft text-warning-text rounded px-2 py-0.5 text-xs font-medium">
+                        retiré du marché
+                      </span>
+                    )}
+                  </h1>
                   <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-ink-3">
                     {product.company && <span>{product.company}</span>}
                     {product.atc_code && <span className="font-mono">{product.atc_code}</span>}

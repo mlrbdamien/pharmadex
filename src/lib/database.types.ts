@@ -61,6 +61,7 @@ export type Database = {
           category: string | null;
           name_fr: string | null;
           fr_source: string | null;
+          delisted: boolean;
           imported_at: string;
         };
         Insert: never; // rempli par l'import (service_role) uniquement

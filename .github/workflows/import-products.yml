@@ -116,12 +116,20 @@ jobs:
             from staging_sl s
            where k.gtin = s.gtin;
 
+          -- distinct on + plus court : un produit a plusieurs emballages SL
+          -- (un par dosage) — sans tri déterministe, le nom retenu changerait
+          -- au hasard d'un import à l'autre.
           update public.products p
-             set name_fr   = s.name_fr,
+             set name_fr   = c.name_fr,
                  fr_source = 'sl'
-            from staging_sl s
-            join public.packages k on k.gtin = s.gtin
-           where p.authorization_nr = k.authorization_nr
+            from (
+              select distinct on (k.authorization_nr)
+                     k.authorization_nr, s.name_fr
+                from staging_sl s
+                join public.packages k on k.gtin = s.gtin
+               order by k.authorization_nr, length(s.name_fr), s.name_fr
+            ) c
+           where p.authorization_nr = c.authorization_nr
              and coalesce(p.fr_source, '') <> 'refdata';
 
           create temp table staging_notices (like public.notices);
@@ -133,9 +141,43 @@ jobs:
           on conflict (authorization_nr, doc_type, lang) do update
             set description = excluded.description, html_url = excluded.html_url,
                 pdf_url = excluded.pdf_url, updated_on = excluded.updated_on;
+
+          -- ------------------------------------------------------------------
+          -- Synchronisation des retraits. Garde-fou d'abord : un fichier
+          -- source tronqué (panne, changement de format silencieux) ne doit
+          -- JAMAIS déclencher une purge massive — on préfère échouer.
+          -- ------------------------------------------------------------------
+          do $$
+          declare np int; nk int; nn int;
+          begin
+            select count(*) into np from staging_products;
+            select count(*) into nk from staging_packages;
+            select count(*) into nn from staging_notices;
+            if np < 5000 or nk < 12000 or nn < 20000 then
+              raise exception 'source suspecte (produits=%, emballages=%, notices=%) — purge refusée',
+                np, nk, nn;
+            end if;
+          end $$;
+
+          -- Produits : marqués retirés, jamais supprimés — des boîtes
+          -- circulent encore et les liaisons doivent survivre.
+          update public.products p
+             set delisted = not exists (
+                   select 1 from staging_products s
+                    where s.authorization_nr = p.authorization_nr);
+
+          -- Emballages et notices : purge des lignes disparues de la source.
+          delete from public.packages k
+           where not exists (select 1 from staging_packages s where s.gtin = k.gtin);
+          delete from public.notices n
+           where not exists (
+                   select 1 from staging_notices s
+                    where s.authorization_nr = n.authorization_nr
+                      and s.doc_type = n.doc_type and s.lang = n.lang);
           commit;
 
           select count(*) as produits_total from public.products;
+          select count(*) as produits_retires from public.products where delisted;
           select count(*) as emballages_total from public.packages;
           select count(*) as notices_total from public.notices;
           select count(*) as noms_francais_officiels from public.products where name_fr is not null;

@@ -115,6 +115,13 @@ ouvrir » va dans le mauvais sens.
   Refdata a migré vers le GTIN comme identifiant, la v2.0 ne l'expose plus.
   La colonne `packages.pharmacode` et sa résolution dans `scan_gtin` sont en
   place si une source apparaît.
+- **L'import est un miroir de la source, prouvé idempotent** (double
+  exécution → checksums identiques). Les emballages et notices disparus de
+  la source sont PURGÉS (garde-fou de volume : une source tronquée fait
+  échouer l'import plutôt que vider la base) ; les produits disparus sont
+  MARQUÉS `delisted`, jamais supprimés — des boîtes circulent encore et la
+  suppression emporterait les liaisons (ON DELETE CASCADE). Badge « retiré
+  du marché » au catalogue et sur la fiche.
 - **Traduction allemand → français à l'import** (`scripts/formes_fr.py`) :
   Swissmedic ne publie ses données qu'en allemand ; l'import traduit les
   suffixes de forme et les unités d'emballage via une table déterministe

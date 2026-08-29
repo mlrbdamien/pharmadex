@@ -151,6 +151,11 @@ export function Medicaments() {
                     <span className="text-ink min-w-0 flex-1 truncate text-[15px]">
                       {libelleFr(product)}
                     </span>
+                    {product.delisted && (
+                      <span className="bg-warning-soft text-warning-text shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium">
+                        retiré
+                      </span>
+                    )}
                     <span className="text-ink-3 hidden w-64 shrink-0 truncate text-[13px] lg:inline">
                       {product.substances}
                     </span>
