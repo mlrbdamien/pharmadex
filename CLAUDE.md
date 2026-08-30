@@ -141,6 +141,13 @@ ouvrir » va dans le mauvais sens.
   notice patient (retirés sur décision produit). Badge de catégorie coloré.
 - **Catalogue** : arborescence ATC navigable (niveaux 1→3→4→5→7, compteurs
   calculés depuis les codes réels), filtre par catégorie de remise A/B/D/E.
+  Libellés français : `src/lib/atc-libelles.json`, 1 278 entrées moissonnées
+  de Wikipédia fr (CC BY-SA, générateur `scripts/gen_atc_labels.py` — à
+  relancer en janvier quand l'OMS révise), fusionnées avec la table maison
+  de `src/lib/atc.ts` qui prime. L'état de consultation (filtre, niveau ATC,
+  remise, pagination) vit dans l'URL : le retour navigateur le restaure.
+  ATTENTION : Supabase tronque toute réponse à 1 000 lignes, limit() au-delà
+  est ignoré en silence — paginer par .range() (voir tousLesCodesAtc).
 
 ## Hors périmètre — ne pas construire sans demande explicite
 

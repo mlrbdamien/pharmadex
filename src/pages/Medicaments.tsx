@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Loader2, Pill, Search, StickyNote } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { supabase } from '../lib/supabase';
@@ -27,18 +27,42 @@ const CATEGORIES_REMISE: Record<string, string> = {
  */
 export function Medicaments() {
   const { notesIndex } = useStore();
-  const [filtre, setFiltre] = useState('');
-  const [atcPrefix, setAtcPrefix] = useState('');
-  const [cat, setCat] = useState<string | null>(null);
+  // L'état de consultation vit dans l'URL : revenir d'une fiche (retour
+  // navigateur) retrouve la recherche, le niveau ATC et la pagination.
+  const [params, setParams] = useSearchParams();
+  const filtre = params.get('q') ?? '';
+  const atcPrefix = params.get('atc') ?? '';
+  const cat = params.get('cat');
+  const pages = Math.max(1, Number(params.get('p')) || 1);
+
+  const poser = (changements: Record<string, string | null>) => {
+    setParams(
+      (courants) => {
+        const suivants = new URLSearchParams(courants);
+        for (const [cle, valeur] of Object.entries(changements)) {
+          if (valeur) suivants.set(cle, valeur);
+          else suivants.delete(cle);
+        }
+        return suivants;
+      },
+      { replace: true },
+    );
+  };
+  const setFiltre = (v: string) => poser({ q: v || null, p: null });
+  const setAtcPrefix = (v: string) => poser({ atc: v || null, p: null });
+  const setCat = (v: string | null) => poser({ cat: v, p: null });
+  const setPages = (n: number) => poser({ p: n > 1 ? String(n) : null });
+
   const [enfants, setEnfants] = useState<{ code: string; n: number }[]>([]);
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
-  const [pages, setPages] = useState(1);
   const [chargement, setChargement] = useState(true);
   const requestId = useRef(0);
 
   useEffect(() => {
-    setChargement(true);
+    // Le voile de chargement ne s'affiche que sur un NOUVEAU filtre —
+    // « Afficher plus » étend la liste en place, sans la faire disparaître.
+    if (pages === 1) setChargement(true);
     const id = ++requestId.current;
     const timer = setTimeout(async () => {
       let query = supabase
@@ -65,11 +89,6 @@ export function Medicaments() {
     }, 200);
     return () => clearTimeout(timer);
   }, [filtre, atcPrefix, cat, pages]);
-
-  // Repartir en page 1 quand le filtre change.
-  useEffect(() => {
-    setPages(1);
-  }, [filtre, atcPrefix, cat]);
 
   // Les enfants du niveau ATC courant, avec compteurs, depuis le cache
   // complet des codes (chargé par pages de 1 000 : Supabase tronque toute
@@ -234,7 +253,7 @@ export function Medicaments() {
               {total !== null && rows.length < total && (
                 <button
                   type="button"
-                  onClick={() => setPages((n) => n + 1)}
+                  onClick={() => setPages(pages + 1)}
                   className="border-line text-ink-2 hover:border-accent-ring hover:text-ink mx-auto mt-4
                              block rounded-control border px-4 py-2 text-sm transition-colors"
                 >

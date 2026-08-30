@@ -79,8 +79,16 @@ export function NotesProduit({
                 <p className="text-[13.5px] leading-snug whitespace-pre-wrap">{note.body}</p>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] opacity-75">
                   <span className="font-semibold">{TYPES_NOTES[note.note_type].label}</span>
-                  {note.atc_prefix && <span className="donnee">classe {note.atc_prefix}</span>}
-                  {note.substance && <span className="italic">{note.substance}</span>}
+                  {note.atc_prefix && (
+                    <span className="donnee bg-info-soft text-info-text rounded px-1 py-px">
+                      classe {note.atc_prefix}
+                    </span>
+                  )}
+                  {note.substance && (
+                    <span className="bg-good-soft text-good-text rounded px-1 py-px italic">
+                      {note.substance}
+                    </span>
+                  )}
                   <span>
                     {note.created_by.split('@')[0]} · vérifiée le {formatDate(note.verified_on)}
                   </span>
@@ -192,11 +200,13 @@ function EditeurNote({
             key={t}
             type="button"
             onClick={() => setType(t)}
+            aria-pressed={type === t}
             className={cn(
-              'cursor-pointer rounded-full border px-2 py-0.5 text-[12px] transition-colors',
+              'cursor-pointer rounded-full px-2 py-0.5 text-[12px] transition-all',
+              TYPES_NOTES[t].classes,
               type === t
-                ? cn('border-transparent font-medium', TYPES_NOTES[t].classes)
-                : 'border-line text-ink-3 hover:text-ink',
+                ? 'ring-accent font-semibold ring-2'
+                : 'opacity-55 hover:opacity-100',
             )}
           >
             {TYPES_NOTES[t].label}
@@ -207,14 +217,16 @@ function EditeurNote({
       {!modification && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-ink-3 text-[12px]">Porte sur :</span>
+          {/* Trois teintes, une par nature de portée : produit teal,
+              classe ATC bleue, principe actif vert — même code couleur
+              que les badges des bandeaux. */}
           <button
             type="button"
             onClick={() => setCible('produit')}
+            aria-pressed={cible === 'produit'}
             className={cn(
-              'cursor-pointer rounded-full border px-2 py-0.5 text-[12px]',
-              cible === 'produit'
-                ? 'border-accent bg-accent text-on-accent'
-                : 'border-line text-ink-2',
+              'bg-accent-soft text-accent cursor-pointer rounded-full px-2 py-0.5 text-[12px] transition-all',
+              cible === 'produit' ? 'ring-accent font-semibold ring-2' : 'opacity-55 hover:opacity-100',
             )}
           >
             ce produit
@@ -223,12 +235,11 @@ function EditeurNote({
             <button
               type="button"
               onClick={() => setCible('atc')}
+              aria-pressed={cible === 'atc'}
               title={`Tous les produits du code ${atcCode}`}
               className={cn(
-                'donnee cursor-pointer rounded-full border px-2 py-0.5 text-[12px]',
-                cible === 'atc'
-                  ? 'border-accent bg-accent text-on-accent'
-                  : 'border-line text-ink-2',
+                'donnee bg-info-soft text-info-text cursor-pointer rounded-full px-2 py-0.5 text-[12px] transition-all',
+                cible === 'atc' ? 'ring-info font-semibold ring-2' : 'opacity-55 hover:opacity-100',
               )}
             >
               ATC {atcCode}
@@ -239,12 +250,13 @@ function EditeurNote({
               key={principe}
               type="button"
               onClick={() => setCible(`sub:${principe}`)}
+              aria-pressed={cible === `sub:${principe}`}
               title={`Tous les produits contenant ${principe}`}
               className={cn(
-                'max-w-56 cursor-pointer truncate rounded-full border px-2 py-0.5 text-[12px] italic',
+                'bg-good-soft text-good-text max-w-56 cursor-pointer truncate rounded-full px-2 py-0.5 text-[12px] italic transition-all',
                 cible === `sub:${principe}`
-                  ? 'border-accent bg-accent text-on-accent'
-                  : 'border-line text-ink-2',
+                  ? 'ring-good font-semibold ring-2'
+                  : 'opacity-55 hover:opacity-100',
               )}
             >
               {principe}

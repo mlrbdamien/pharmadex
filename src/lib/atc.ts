@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import libellesWikipedia from './atc-libelles.json';
 
 /**
  * L'arbre ATC réel de la base — tous les codes des produits, chargés UNE fois
@@ -54,7 +55,7 @@ export function enfantsDe(codes: string[], prefix: string): { code: string; n: n
  * année, relus en revue de code. Les niveaux plus profonds s'affichent en
  * code + compteur.
  */
-export const LIBELLES_ATC: Record<string, string> = {
+const LIBELLES_MAISON: Record<string, string> = {
   A: 'Voies digestives et métabolisme',
   A01: 'Préparations stomatologiques',
   A02: 'Troubles de l’acidité',
@@ -163,4 +164,19 @@ export const LIBELLES_ATC: Record<string, string> = {
   V09: 'Radiopharmaceutiques à usage diagnostique',
   V10: 'Radiopharmaceutiques à usage thérapeutique',
   V20: 'Pansements chirurgicaux',
+};
+
+/**
+ * Libellés fusionnés : les 1 278 entrées moissonnées de Wikipédia fr
+ * (niveaux 2-4, CC BY-SA — voir scripts/gen_atc_labels.py) complétées par
+ * la table maison, qui prime là où les deux existent (stabilité de ce qui
+ * est déjà affiché, et lettres de niveau 1 absentes de la moisson).
+ */
+export const LIBELLES_ATC: Record<string, string> = {
+  ...Object.fromEntries(
+    Object.entries(libellesWikipedia as Record<string, string>).filter(
+      ([code]) => !code.startsWith('_'),
+    ),
+  ),
+  ...LIBELLES_MAISON,
 };
