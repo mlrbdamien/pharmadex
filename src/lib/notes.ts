@@ -8,6 +8,7 @@ import { fold } from './resources';
  */
 
 export type NoteType =
+  | 'posologie'
   | 'conseil'
   | 'conservation'
   | 'substitution'
@@ -31,6 +32,7 @@ export type ProductNote = {
 // Six types, six couleurs distinctes : le bandeau prend celle du type, la
 // nature de la consigne se lit avant même son texte.
 export const TYPES_NOTES: Record<NoteType, { label: string; classes: string }> = {
+  posologie: { label: 'Posologie', classes: 'bg-dose-soft text-dose-text' },
   conseil: { label: 'Conseil comptoir', classes: 'bg-accent-soft text-accent' },
   conservation: { label: 'Conservation', classes: 'bg-good-soft text-good-text' },
   substitution: { label: 'Substitution', classes: 'bg-warning-soft text-warning-text' },
@@ -146,4 +148,32 @@ export function estAnnote(
     return index.substances.some((sub) => meule.includes(sub));
   }
   return false;
+}
+
+
+/**
+ * Copie dans le presse-papier, avec repli pour les contextes où l'API
+ * moderne est refusée (navigateur ancien, page non sécurisée). Renvoie la
+ * réussite : l'appelant affiche la confirmation, jamais un faux positif.
+ */
+export async function copier(texte: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(texte);
+    return true;
+  } catch {
+    try {
+      const zone = document.createElement('textarea');
+      zone.value = texte;
+      zone.setAttribute('readonly', '');
+      zone.style.position = 'fixed';
+      zone.style.opacity = '0';
+      document.body.appendChild(zone);
+      zone.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(zone);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 }

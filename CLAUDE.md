@@ -130,7 +130,12 @@ ouvrir » va dans le mauvais sens.
   compte les formes restées en allemand — compléter la table, pas inventer
   un service de traduction.
 
-- **Notes maison** (`product_notes`, migrations 0009+0010) : sur UN produit,
+- **Posologies maison** : type de note `posologie` (migration 0011) — même
+  cycle de vie que les notes (portée, auteur, fraîcheur), mais rendu dans un
+  bloc propre en tête de fiche avec bouton de copie, parce que c'est la
+  question numéro un au comptoir et que le texte est fait pour être collé
+  ailleurs. `copier()` dans src/lib/notes.ts gère le repli execCommand.
+- **Notes maison** (`product_notes`, migrations 0009+0010+0011) : sur UN produit,
   UN code ATC complet ou UN principe actif (appariement substance côté
   application, champ Swissmedic en texte libre), type OBLIGATOIRE (vocabulaire médicament — le typage cadre
   l'usage : l'invariant « aucune donnée patient » tient aussi par le design),

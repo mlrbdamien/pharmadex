@@ -53,6 +53,9 @@
   --info: #2563a8;
   --info-text: #1f568f;
   --info-soft: #e8f0fa;
+  --dose: #7343a8;
+  --dose-text: #5f3590;
+  --dose-soft: #f1eafa;
 
   --shadow-card: 0 1px 2px rgb(21 27 26 / 0.05);
   --shadow-rail: 0 1px 2px rgb(21 27 26 / 0.07);
@@ -99,6 +102,9 @@
     --info: #6fa8e0;
     --info-text: #8ab4e8;
     --info-soft: #142234;
+    --dose: #b28ee0;
+    --dose-text: #c2a3e8;
+    --dose-soft: #201733;
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-rail: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -138,6 +144,9 @@
     --info: #6fa8e0;
     --info-text: #8ab4e8;
     --info-soft: #142234;
+    --dose: #b28ee0;
+    --dose-text: #c2a3e8;
+    --dose-soft: #201733;
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-rail: 0 1px 2px rgb(0 0 0 / 0.5);
@@ -170,6 +179,9 @@
   --color-info: var(--info);
   --color-info-text: var(--info-text);
   --color-info-soft: var(--info-soft);
+  --color-dose: var(--dose);
+  --color-dose-text: var(--dose-text);
+  --color-dose-soft: var(--dose-soft);
 
   /* Rayons resserrés : une console, pas une application mobile. */
   --radius-card: 9px;

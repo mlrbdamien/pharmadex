@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarCheck, Pencil, Plus, StickyNote, Trash2, X } from 'lucide-react';
+import {
+  CalendarCheck,
+  Check,
+  Copy,
+  Pencil,
+  Plus,
+  Ruler,
+  StickyNote,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { cn } from './ui';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { isStaleDate } from '../lib/resources';
 import { formatDate, todayISO } from '../lib/format';
 import {
+  copier,
   createNote,
   deleteNote,
   notesPour,
@@ -33,6 +44,14 @@ export function NotesProduit({
   const { refresh } = useStore();
   const [notes, setNotes] = useState<ProductNote[]>([]);
   const [edition, setEdition] = useState<'nouvelle' | string | null>(null);
+  const [copiee, setCopiee] = useState<string | null>(null);
+
+  async function copierNote(note: ProductNote) {
+    if (await copier(note.body)) {
+      setCopiee(note.id);
+      setTimeout(() => setCopiee(null), 2000);
+    }
+  }
 
   const charger = useCallback(async () => {
     setNotes(await notesPour(authorizationNr, atcCode, substances));
@@ -50,12 +69,105 @@ export function NotesProduit({
     void refresh(); // l'index du rail (compteurs, marqueurs) suit
   }
 
+  const posologies = notes.filter((n) => n.note_type === 'posologie');
+  const autres = notes.filter((n) => n.note_type !== 'posologie');
+
   if (notes.length === 0 && !canEdit) return null;
 
   return (
     <div className="border-line bg-surface-1 shrink-0 border-b px-5 py-2">
+      {/* Les posologies maison occupent leur propre bloc, en tête : c'est
+          la question numéro un au comptoir, et le texte est fait pour être
+          copié — dans le logiciel de caisse, sur une étiquette. */}
+      {posologies.length > 0 && (
+        <div className="mb-2 space-y-1.5">
+          {posologies.map((note) =>
+            edition === note.id ? (
+              <EditeurNote
+                key={note.id}
+                initial={note}
+                authorizationNr={authorizationNr}
+                atcCode={atcCode}
+                substances={substances}
+                onAnnuler={() => setEdition(null)}
+                onEnregistrer={(champ) => agir(() => updateNote(note.id, champ))}
+              />
+            ) : (
+              <div
+                key={note.id}
+                className="border-dose bg-dose-soft rounded-control flex items-start gap-3 border px-3 py-2.5"
+              >
+                <Ruler size={16} className="text-dose-text mt-0.5 shrink-0" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="text-dose-text text-[15px] leading-snug font-medium whitespace-pre-wrap">
+                    {note.body}
+                  </p>
+                  <p className="text-dose-text mt-1 flex flex-wrap items-center gap-x-2 text-[11px] opacity-70">
+                    <span className="font-semibold">Posologie maison</span>
+                    {note.atc_prefix && <span className="donnee">classe {note.atc_prefix}</span>}
+                    {note.substance && <span className="italic">{note.substance}</span>}
+                    <span>
+                      {note.created_by.split('@')[0]} · vérifiée le {formatDate(note.verified_on)}
+                    </span>
+                    {isStaleDate(note.verified_on) && (
+                      <span className="font-semibold">à revérifier</span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void copierNote(note)}
+                  title="Copier la posologie"
+                  className={cn(
+                    'rounded-control inline-flex shrink-0 cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-[13px] font-medium transition-colors',
+                    copiee === note.id
+                      ? 'bg-good-soft text-good-text'
+                      : 'bg-dose text-on-accent hover:opacity-90',
+                  )}
+                >
+                  {copiee === note.id ? <Check size={14} /> : <Copy size={14} />}
+                  {copiee === note.id ? 'Copiée' : 'Copier'}
+                </button>
+                {canEdit && (
+                  <span className="flex shrink-0 gap-0.5">
+                    <button
+                      type="button"
+                      title="Vérifiée aujourd'hui"
+                      onClick={() => void agir(() => updateNote(note.id, { verified_on: todayISO() }))}
+                      className="text-dose-text cursor-pointer rounded p-1 opacity-60 hover:opacity-100"
+                    >
+                      <CalendarCheck size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Modifier"
+                      onClick={() => setEdition(note.id)}
+                      className="text-dose-text cursor-pointer rounded p-1 opacity-60 hover:opacity-100"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Supprimer"
+                      onClick={() => {
+                        if (window.confirm('Supprimer cette posologie ?')) {
+                          void agir(() => deleteNote(note.id));
+                        }
+                      }}
+                      className="text-dose-text cursor-pointer rounded p-1 opacity-60 hover:opacity-100"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+      )}
+
       <div className="space-y-1.5">
-        {notes.map((note) =>
+        {autres.map((note) =>
           edition === note.id ? (
             <EditeurNote
               key={note.id}
@@ -97,6 +209,16 @@ export function NotesProduit({
                   )}
                 </p>
               </div>
+              <span className="flex shrink-0 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => void copierNote(note)}
+                  title="Copier le texte"
+                  className="cursor-pointer rounded p-1 opacity-60 hover:opacity-100"
+                >
+                  {copiee === note.id ? <Check size={13} /> : <Copy size={13} />}
+                </button>
+              </span>
               {canEdit && (
                 <span className="flex shrink-0 gap-0.5">
                   <button
@@ -149,7 +271,7 @@ export function NotesProduit({
               className="text-ink-3 hover:text-accent inline-flex cursor-pointer items-center gap-1.5
                          px-1 py-0.5 text-[12.5px] transition-colors"
             >
-              <Plus size={13} /> Ajouter une note
+              <Plus size={13} /> Ajouter une posologie ou une note
             </button>
           )
         )}

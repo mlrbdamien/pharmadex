@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarCheck, Loader2, Pill, StickyNote, Trash2 } from 'lucide-react';
+import { CalendarCheck, Check, Copy, Loader2, Pill, Ruler, StickyNote, Trash2 } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { isStaleDate } from '../lib/resources';
 import { formatDate, todayISO } from '../lib/format';
 import {
+  copier,
   deleteNote,
   listAllNotes,
   TYPES_NOTES,
@@ -29,6 +30,7 @@ export function Notes() {
   const [noms, setNoms] = useState<Map<string, string>>(new Map());
   const [type, setType] = useState<NoteType | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [copiee, setCopiee] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     const rows = await listAllNotes();
@@ -106,7 +108,11 @@ export function Notes() {
                     className="border-line bg-surface-1 shadow-card rounded-card border px-4 py-3"
                   >
                     <div className="flex items-start gap-3">
-                      <StickyNote size={15} className="text-warning mt-0.5 shrink-0" aria-hidden />
+                      {note.note_type === 'posologie' ? (
+                        <Ruler size={15} className="text-dose-text mt-0.5 shrink-0" aria-hidden />
+                      ) : (
+                        <StickyNote size={15} className="text-warning mt-0.5 shrink-0" aria-hidden />
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
@@ -146,6 +152,20 @@ export function Notes() {
                           {note.created_by.split('@')[0]} · vérifiée le {formatDate(note.verified_on)}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        title="Copier le texte"
+                        onClick={() =>
+                          void copier(note.body).then((ok) => {
+                            if (!ok) return;
+                            setCopiee(note.id);
+                            setTimeout(() => setCopiee(null), 2000);
+                          })
+                        }
+                        className="text-ink-3 hover:text-accent shrink-0 cursor-pointer rounded p-1"
+                      >
+                        {copiee === note.id ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
                       {canEdit && (
                         <span className="flex shrink-0 gap-0.5">
                           <button
