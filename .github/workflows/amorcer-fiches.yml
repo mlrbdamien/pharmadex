@@ -1,0 +1,45 @@
+name: Amorçage de l'aide-mémoire
+
+# Charge les 36 fiches venues de comptoir-otc dans la table `fiches`.
+# À lancer UNE fois, après avoir appliqué la migration 0012 dans le SQL Editor.
+#
+# Le seed est en `on conflict do nothing` : une seconde exécution ne touche à
+# rien. Les fiches sont éditables depuis l'application — les réécrire depuis
+# ce fichier effacerait le travail fait au comptoir.
+#
+# Secret requis : SUPABASE_DB_URL (le même que la sauvegarde nocturne).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  amorcer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Charger les fiches
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Le secret SUPABASE_DB_URL n'est pas défini."
+            exit 1
+          fi
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q \
+            -f supabase/seed/0012_fiches_data.sql
+
+      - name: Vérifier
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "
+            select volet,
+                   count(*)                             as fiches,
+                   sum(jsonb_array_length(sections))    as sections,
+                   sum(cardinality(atc))                as prefixes_atc
+              from public.fiches
+             group by volet
+             order by volet;" | tee "$GITHUB_STEP_SUMMARY"

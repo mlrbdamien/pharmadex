@@ -15,14 +15,14 @@ import {
   shouldLogMiss,
 } from '../lib/resources';
 import { normalizeScannedCode, scanGtin, searchProducts } from '../lib/products';
-import { chercherFiches, LIBELLES_VOLET } from '../data/fiches';
+import { chercherFiches, LIBELLES_VOLET } from '../lib/fiches';
 import { ProductCard } from '../components/ProductCard';
 import { Pill, StickyNote } from 'lucide-react';
 import type { ProductRow, Resource, ScanHit } from '../lib/types';
 
 export function Home() {
   const { canEdit } = useAuth();
-  const { resources, tags, notesIndex, loading, error, refresh } = useStore();
+  const { resources, tags, notesIndex, fiches, loading, error, refresh } = useStore();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
@@ -40,7 +40,10 @@ export function Home() {
 
   // Les fiches de l'aide-mémoire se cherchent en local sur leur catalogue :
   // 36 entrées, aucun aller-retour, aucun chargement de leurs sections.
-  const ficheMatches = useMemo(() => (trimmed ? chercherFiches(trimmed) : []), [trimmed]);
+  const ficheMatches = useMemo(
+    () => (trimmed ? chercherFiches(fiches, trimmed) : []),
+    [fiches, trimmed],
+  );
 
   // Recherche serveur, débounce 150 ms. Tant qu'elle est en vol, l'affichage
   // retombe sur le filtre local : l'écran n'est jamais vide entre deux frappes.

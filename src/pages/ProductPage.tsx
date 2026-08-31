@@ -16,6 +16,7 @@ import { NotesProduit } from '../components/NotesProduit';
 import { LinkPicker } from '../components/LinkPicker';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import {
   linkDetails,
@@ -30,7 +31,7 @@ import type { ProductRow } from '../lib/types';
 import { bestByType, fetchNoticeHtml, listNotices, NOTICE_SHORTCUTS } from '../lib/notices';
 import type { Notice } from '../lib/notices';
 import type { Resource, ScanHit } from '../lib/types';
-import { fichesPourAtc, LIBELLES_VOLET } from '../data/fiches';
+import { fichesPourAtc, LIBELLES_VOLET } from '../lib/fiches';
 
 /** Catégorie de remise : lisible à un mètre, du plus strict au plus libre. */
 const CATEGORIES: Record<string, { libelle: string; classes: string }> = {
@@ -60,7 +61,8 @@ export function ProductPage() {
 
   // Le catalogue des fiches est statique et léger : pas de requête, pas
   // d'état de chargement — seules leurs sections arrivent à la demande.
-  const fiches = fichesPourAtc(hit?.product.atc_code);
+  const { fiches: catalogue } = useStore();
+  const fiches = fichesPourAtc(catalogue, hit?.product.atc_code);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const noticeFrame = useRef<HTMLIFrameElement>(null);

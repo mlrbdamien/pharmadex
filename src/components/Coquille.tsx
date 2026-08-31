@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { pushSeed } from '../lib/searchSeed';
 import { LIENS_REFERENCES } from '../lib/refs';
-import { CATALOGUE } from '../data/fiches';
 import {
   BookOpen,
   Calculator,
@@ -61,7 +60,7 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
         to: '/fiches',
         libelle: 'Aide-mémoire',
         icone: BookOpen,
-        compteur: () => CATALOGUE.length,
+        compteur: (c) => c.fiches || null,
       },
       {
         to: '/dispensation',

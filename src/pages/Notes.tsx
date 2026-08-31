@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarCheck, Check, Copy, Loader2, Pill, Ruler, StickyNote, Trash2 } from 'lucide-react';
+import {
+  BookOpen,
+  CalendarCheck,
+  Check,
+  Copy,
+  Loader2,
+  Pill,
+  Ruler,
+  StickyNote,
+  Trash2,
+} from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -24,7 +34,7 @@ import {
  */
 export function Notes() {
   const { canEdit } = useAuth();
-  const { refresh } = useStore();
+  const { refresh, fiches } = useStore();
   const ouvrirMenu = useMenu();
   const [notes, setNotes] = useState<ProductNote[]>([]);
   const [noms, setNoms] = useState<Map<string, string>>(new Map());
@@ -136,6 +146,15 @@ export function Notes() {
                             <span className="donnee bg-accent-soft text-accent rounded px-1.5 py-0.5 text-[12px]">
                               classe {note.atc_prefix}
                             </span>
+                          ) : note.fiche_id ? (
+                            <Link
+                              to={`/f/${note.fiche_id}`}
+                              className="text-ink hover:text-accent inline-flex min-w-0 items-center
+                                         gap-1 truncate text-[14px] font-medium hover:underline"
+                            >
+                              <BookOpen size={13} className="text-accent shrink-0" />
+                              {fiches.find((f) => f.id === note.fiche_id)?.titre ?? note.fiche_id}
+                            </Link>
                           ) : (
                             <span className="bg-info-soft text-info-text rounded px-1.5 py-0.5 text-[12px] italic">
                               {note.substance}

@@ -178,11 +178,16 @@ ouvrir » va dans le mauvais sens.
 
 ## Aide-mémoire de comptoir — règles d'écriture NON NÉGOCIABLES
 
-Les 36 fiches de `src/data/fiches` viennent du projet `~/comptoir-otc`
-(fusionné le 31.08.2026, sur décision de Damien : les trois volets, pas de
-fichier autonome, liaison ATC pendant le portage). **Les règles ci-dessous
-viennent avec le contenu. Elles existent parce qu'une erreur dans ces fiches
-peut se retrouver face à un patient.**
+Les 36 fiches viennent du projet `~/comptoir-otc` (fusionné le 31.08.2026 :
+les trois volets, pas de fichier autonome, liaison ATC pendant le portage).
+Elles vivent **en base** (table `fiches`, migration 0012) et sont
+**modifiables depuis l'interface** par les éditeurs — décision de Damien :
+édition complète ET amendements datés, les deux.
+
+**Les règles ci-dessous viennent avec le contenu. Elles existent parce qu'une
+erreur dans ces fiches peut se retrouver face à un patient.** Elles étaient
+tenues par le rituel git ; elles ne reposent plus que sur la discipline de
+qui édite. Un formulaire n'empêche personne d'écrire de mémoire.
 
 ### Ce que l'aide-mémoire n'est pas
 
@@ -197,16 +202,19 @@ doit le démentir. `compendium.ch` fait foi, pas Pharmadex.
 1. **Une fiche à la fois.** Écrire une fiche, s'arrêter, attendre la
    validation explicite de Damien avant d'en commencer une autre. Jamais deux
    fiches dans un même élan, même si la demande semble le permettre.
-2. **Éditions ciblées** dans `otc.ts` / `rx.ts` / `lpd.ts` (+ l'entrée
-   correspondante de `catalogue.ts`). Ne JAMAIS régénérer ces fichiers en
-   masse : ils ont été produits une fois depuis comptoir-otc.html, ce script
-   n'a plus de raison d'être et le contenu ne vit plus qu'ici.
-3. **Un commit sitôt la fiche validée**, décrivant ce qui a été vérifié. Le
-   journal git EST la trace de validation — c'est pour cela que le contenu
-   reste en dépôt et n'est pas passé en base.
-4. **Rapport de fin de fiche** dans la conversation : ce qui a été vérifié et
+2. **`verifie_le` se met à jour SEULEMENT quand les sources ont été
+   revérifiées.** Corriger une coquille ne revérifie rien : laisser la date.
+   C'est le seul témoin qui reste de la fraîcheur d'une fiche.
+3. **Rapport de fin de fiche** dans la conversation : ce qui a été vérifié et
    où, les `non vérifié` restants avec leur raison, les sources tentées sans
    succès (qui figurent aussi dans le tableau `Sources` de la fiche).
+4. **Amender plutôt que réécrire**, quand l'information s'ajoute. Un
+   amendement (note de portée `fiche_id`) s'affiche en tête, daté et signé,
+   sans toucher au texte vérifié. C'est le fonctionnement d'un errata.
+   Réécrire est pour la correction ; amender est pour l'ajout.
+   `supabase/seed/0012_fiches_data.sql` est l'amorçage initial, en
+   `on conflict do nothing` : ne JAMAIS le régénérer ni le rejouer en
+   écrasement — il effacerait le travail fait au comptoir.
 
 ### Sourcing — la règle qui prime sur toutes les autres
 
@@ -251,14 +259,24 @@ sémantiques distinctes.
 
 ### Technique
 
-- `catalogue.ts` (métadonnées, ~15 Ko) est toujours chargé : il alimente la
+- **Deux requêtes, jamais une.** `listerFiches()` ne ramène que les
+  métadonnées (36 lignes, cachées dans `useStore`) : c'est ce qui alimente la
   recherche du comptoir et le rattachement aux produits. Les sections
-  (424 Ko) arrivent par `import()` dynamique, volet par volet — la règle d'or
-  interdit d'en charger le poids sur l'écran de recherche.
-- Le champ `atc` d'une entrée rattache la fiche aux médicaments : un code ATC
-  qui commence par l'un de ses préfixes fait remonter la fiche sur la fiche
-  produit. Même convention que `atc_resources`. Préfixes vérifiés contre
+  n'arrivent que sur `lireFiche(id)`, pour la fiche ouverte. La règle d'or
+  interdit de charger 424 Ko pour afficher une liste.
+- Le champ `atc` rattache la fiche aux médicaments : un code ATC qui commence
+  par l'un de ses préfixes fait remonter la fiche sur la fiche produit. Même
+  convention que `atc_resources`. Préfixes vérifiés contre
   `src/lib/atc-libelles.json`.
+- **L'éditeur est un formulaire à huit champs facultatifs**, pas un agenceur
+  de blocs : le rendu suit un ordre fixe (p → ul → ol → table → check →
+  triage → stop → warn), l'ordre n'a jamais été une décision de rédaction.
+  Les conversions texte ↔ structure sont dans `src/lib/fiches-texte.ts`, un
+  module SANS import d'exécution pour rester exécutable hors navigateur : un
+  aller-retour qui perd du contenu mutile une fiche en silence, ça se teste
+  (303/303 sections vérifiées). Un élément par ligne, cellules séparées par
+  « | » — sûr, le corpus ne contient ni saut de ligne dans une liste ni « | »
+  dans ses 2 885 cellules.
 - Le HTML en ligne des chaînes (`<b>`, `<a>`, `<span class="dose|cat|n|nv">`)
   est rendu par `dangerouslySetInnerHTML` : contenu rédigé au dépôt et relu à
   chaque commit, jamais une saisie d'utilisateur. Vocabulaire clos — ne pas

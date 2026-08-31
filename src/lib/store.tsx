@@ -4,6 +4,7 @@ import type { Resource } from './types';
 import { listAll, STALE_MONTHS } from './resources';
 import { listTags } from './tags';
 import { chargerNotesIndex, type NotesIndex } from './notes';
+import { listerFiches, type EntreeFiche } from './fiches';
 
 /**
  * Toutes les ressources sont chargées une fois et gardées en mémoire. C'est ce
@@ -14,6 +15,8 @@ type StoreValue = {
   resources: Resource[];
   tags: string[];
   notesIndex: NotesIndex | null;
+  /** Métadonnées des fiches, sans leur contenu — recherche et liaison ATC. */
+  fiches: EntreeFiche[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -25,19 +28,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [resources, setResources] = useState<Resource[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [notesIndex, setNotesIndex] = useState<NotesIndex | null>(null);
+  const [fiches, setFiches] = useState<EntreeFiche[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [rows, names, notes] = await Promise.all([
+      const [rows, names, notes, catalogue] = await Promise.all([
         listAll(),
         listTags(),
         chargerNotesIndex(STALE_MONTHS),
+        listerFiches(),
       ]);
       setResources(rows);
       setTags(names);
       setNotesIndex(notes);
+      setFiches(catalogue);
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Chargement impossible');
@@ -51,8 +57,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ resources, tags, notesIndex, loading, error, refresh }),
-    [resources, tags, notesIndex, loading, error, refresh],
+    () => ({ resources, tags, notesIndex, fiches, loading, error, refresh }),
+    [resources, tags, notesIndex, fiches, loading, error, refresh],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

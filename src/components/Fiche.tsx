@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight, RotateCcw } from 'lucide-react';
 import { cn } from './ui';
-import type { EntreeFiche, Section, Stop, Tableau, Triage } from '../data/fiches/types';
+import type { EntreeFiche, Section, Stop, Tableau, Triage } from '../lib/fiches';
 
 /**
  * Le rendu d'une fiche de l'aide-mémoire, transposé du moteur de

@@ -21,6 +21,8 @@ export type ProductNote = {
   authorization_nr: string | null;
   atc_prefix: string | null;
   substance: string | null;
+  /** Amendement à une fiche de l'aide-mémoire — quatrième portée. */
+  fiche_id: string | null;
   note_type: NoteType;
   body: string;
   verified_on: string;
@@ -42,7 +44,7 @@ export const TYPES_NOTES: Record<NoteType, { label: string; classes: string }> =
 };
 
 const COLONNES =
-  'id,authorization_nr,atc_prefix,substance,note_type,body,verified_on,created_by,created_at,updated_at';
+  'id,authorization_nr,atc_prefix,substance,fiche_id,note_type,body,verified_on,created_by,created_at,updated_at';
 
 /**
  * Les notes d'une fiche : celles du produit, celles dont le préfixe ATC
@@ -72,6 +74,21 @@ export async function notesPour(
     .sort((a, b) => Number(Boolean(b.authorization_nr)) - Number(Boolean(a.authorization_nr)));
 }
 
+/**
+ * Les amendements d'une fiche. Un amendement ne réécrit pas la fiche : il
+ * s'affiche en tête, daté et signé. C'est le fonctionnement d'un errata —
+ * on n'efface pas, on ajoute.
+ */
+export async function notesPourFiche(ficheId: string): Promise<ProductNote[]> {
+  const { data, error } = await supabase
+    .from('product_notes')
+    .select(COLONNES)
+    .eq('fiche_id', ficheId)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return (data ?? []) as ProductNote[];
+}
+
 export async function listAllNotes(): Promise<ProductNote[]> {
   const { data, error } = await supabase
     .from('product_notes')
@@ -81,10 +98,12 @@ export async function listAllNotes(): Promise<ProductNote[]> {
   return (data ?? []) as ProductNote[];
 }
 
+/** Exactement UNE portée doit être renseignée — la contrainte SQL le tient. */
 export async function createNote(note: {
-  authorization_nr: string | null;
-  atc_prefix: string | null;
-  substance: string | null;
+  authorization_nr?: string | null;
+  atc_prefix?: string | null;
+  substance?: string | null;
+  fiche_id?: string | null;
   note_type: NoteType;
   body: string;
 }): Promise<void> {

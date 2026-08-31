@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Loader2, Plus, Search } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { cn } from '../components/ui';
-import { CATALOGUE, chercherFiches, groupesDe, LIBELLES_VOLET } from '../data/fiches';
-import type { EntreeFiche, Volet } from '../data/fiches/types';
+import { chercherFiches, groupesDe, LIBELLES_VOLET } from '../lib/fiches';
+import type { EntreeFiche, Volet } from '../lib/fiches';
+import { useStore } from '../lib/store';
+import { useAuth } from '../lib/auth';
 
 const VOLETS: Volet[] = ['otc', 'rx', 'lpd'];
 
@@ -14,6 +16,8 @@ const VOLETS: Volet[] = ['otc', 'rx', 'lpd'];
  * d'une fiche retrouve le volet et le filtre.
  */
 export function Fiches() {
+  const { fiches: catalogue, loading } = useStore();
+  const { canEdit } = useAuth();
   const [params, setParams] = useSearchParams();
   const volet = (params.get('v') as Volet) || 'otc';
   const filtre = params.get('q') ?? '';
@@ -34,15 +38,30 @@ export function Fiches() {
 
   // Un filtre traverse les volets : chercher « benzo » ne doit pas dépendre
   // de l'onglet ouvert.
-  const trouvees = useMemo(() => (filtre ? chercherFiches(filtre) : null), [filtre]);
-  const groupes = useMemo(() => groupesDe(volet), [volet]);
+  const trouvees = useMemo(
+    () => (filtre ? chercherFiches(catalogue, filtre) : null),
+    [catalogue, filtre],
+  );
+  const groupes = useMemo(() => groupesDe(catalogue, volet), [catalogue, volet]);
 
   return (
     <>
       <EnteteEcran
         titre="Aide-mémoire"
-        contexte={`${CATALOGUE.length} fiches`}
+        contexte={catalogue.length > 0 ? `${catalogue.length} fiches` : undefined}
         onMenu={useMenu()}
+        actions={
+          canEdit && (
+            <Link
+              to="/fiches/nouvelle"
+              className="border-line text-ink-2 hover:text-ink hover:bg-surface-2 rounded-control
+                         inline-flex items-center gap-1.5 border px-2.5 py-1.5 text-[13px]"
+            >
+              <Plus size={13} strokeWidth={2} aria-hidden />
+              Nouvelle fiche
+            </Link>
+          )
+        }
       />
       <main className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-4xl">
@@ -83,7 +102,16 @@ export function Fiches() {
           )}
 
           <div className="mt-5 flex flex-col gap-6">
-            {trouvees ? (
+            {loading && catalogue.length === 0 ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="text-ink-3 size-5 animate-spin" />
+              </div>
+            ) : catalogue.length === 0 ? (
+              <p className="text-ink-3 text-[14px] leading-relaxed">
+                Aucune fiche en base. Si la migration 0012 vient d’être appliquée, il reste
+                à exécuter l’amorçage <span className="donnee">0012_fiches_data.sql</span>.
+              </p>
+            ) : trouvees ? (
               trouvees.length > 0 ? (
                 <Groupe titre={`${trouvees.length} résultat${trouvees.length > 1 ? 's' : ''}`} fiches={trouvees} />
               ) : (

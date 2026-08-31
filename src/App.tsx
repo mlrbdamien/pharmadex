@@ -9,6 +9,7 @@ import { Medicaments } from './pages/Medicaments';
 import { Dispensation } from './pages/Dispensation';
 import { Fiches } from './pages/Fiches';
 import { FichePage } from './pages/FichePage';
+import { FicheEditor } from './pages/FicheEditor';
 import { Ressources } from './pages/Ressources';
 import { Notes } from './pages/Notes';
 import { ResourceForm } from './pages/ResourceForm';
@@ -62,6 +63,8 @@ function Gate() {
           <Route path="/dispensation" element={<Dispensation />} />
           <Route path="/fiches" element={<Fiches />} />
           <Route path="/f/:id" element={<FichePage />} />
+          <Route path="/fiches/nouvelle" element={<FicheEditor />} />
+          <Route path="/f/:id/editer" element={<FicheEditor />} />
           <Route path="/ressources" element={<Ressources />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/r/:id" element={<ResourcePage />} />

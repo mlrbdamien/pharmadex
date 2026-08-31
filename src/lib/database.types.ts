@@ -114,6 +114,7 @@ export type Database = {
           authorization_nr: string | null;
           atc_prefix: string | null;
           substance: string | null;
+          fiche_id: string | null;
           note_type: string;
           body: string;
           verified_on: string;
@@ -125,6 +126,7 @@ export type Database = {
           authorization_nr?: string | null;
           atc_prefix?: string | null;
           substance?: string | null;
+          fiche_id?: string | null;
           note_type: string;
           body: string;
           verified_on?: string;
@@ -133,6 +135,50 @@ export type Database = {
           note_type?: string;
           body?: string;
           verified_on?: string;
+        };
+        Relationships: [];
+      };
+      fiches: {
+        Row: {
+          id: string;
+          code: string;
+          groupe: string;
+          titre: string;
+          sous: string;
+          volet: string;
+          remise: string | null;
+          atc: string[];
+          sections: unknown;
+          rang: number;
+          verifie_le: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          id: string;
+          code: string;
+          groupe: string;
+          titre: string;
+          sous?: string;
+          volet: string;
+          remise?: string | null;
+          atc?: string[];
+          sections?: unknown;
+          rang?: number;
+          verifie_le?: string;
+        };
+        Update: {
+          code?: string;
+          groupe?: string;
+          titre?: string;
+          sous?: string;
+          volet?: string;
+          remise?: string | null;
+          atc?: string[];
+          sections?: unknown;
+          rang?: number;
+          verifie_le?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
