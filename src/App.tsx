@@ -6,6 +6,7 @@ import { CoquilleLayout } from './components/Coquille';
 import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { Medicaments } from './pages/Medicaments';
+import { Dispensation } from './pages/Dispensation';
 import { Ressources } from './pages/Ressources';
 import { Notes } from './pages/Notes';
 import { ResourceForm } from './pages/ResourceForm';
@@ -56,6 +57,7 @@ function Gate() {
         <Route element={<CoquilleLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/medicaments" element={<Medicaments />} />
+          <Route path="/dispensation" element={<Dispensation />} />
           <Route path="/ressources" element={<Ressources />} />
           <Route path="/notes" element={<Notes />} />
           <Route path="/r/:id" element={<ResourcePage />} />

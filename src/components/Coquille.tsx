@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { pushSeed } from '../lib/searchSeed';
 import { LIENS_REFERENCES } from '../lib/refs';
 import {
+  Calculator,
   ExternalLink,
   ListX,
   Lock,
@@ -53,6 +54,11 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
         libelle: 'Médicaments',
         icone: Pill,
         compteur: (c) => c.produits,
+      },
+      {
+        to: '/dispensation',
+        libelle: 'Dispensation',
+        icone: Calculator,
       },
       {
         to: '/ressources',

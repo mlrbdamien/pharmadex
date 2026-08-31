@@ -58,7 +58,6 @@ export function Login() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
       <h1 className="text-2xl font-semibold text-ink">Pharmadex</h1>
-      <p className="mt-1 text-sm text-ink-3">Références du comptoir</p>
 
       <form onSubmit={submit} className="mt-8 space-y-3">
         <div>
@@ -104,11 +103,6 @@ export function Login() {
           Se connecter
         </button>
       </form>
-
-      <p className="mt-6 text-xs text-ink-3">
-        Mot de passe oublié ? Il se redéfinit depuis le tableau de bord Supabase — aucun
-        e-mail n'est envoyé par Pharmadex.
-      </p>
     </main>
   );
 }

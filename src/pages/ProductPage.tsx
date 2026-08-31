@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Calculator,
   ChevronDown,
   ExternalLink,
   Link2,
@@ -194,7 +195,20 @@ export function ProductPage() {
 
   return (
     <>
-      <EnteteEcran titre="Fiche médicament" onMenu={ouvrirMenu} />
+      <EnteteEcran
+        titre="Fiche médicament"
+        onMenu={ouvrirMenu}
+        actions={
+          <Link
+            to={`/dispensation?p=${product.authorization_nr}`}
+            className="border-line text-ink-2 hover:text-ink hover:bg-surface-2 rounded-control
+                       inline-flex items-center gap-1.5 border px-2.5 py-1.5 text-[13px]"
+          >
+            <Calculator size={13} strokeWidth={1.75} aria-hidden />
+            Dispensation
+          </Link>
+        }
+      />
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
         {/* ---- En-tête compact ---- */}
         <div className="border-line bg-surface-1 shrink-0 border-b px-5 py-3">

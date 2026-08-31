@@ -135,6 +135,28 @@ ouvrir » va dans le mauvais sens.
   bloc propre en tête de fiche avec bouton de copie, parce que c'est la
   question numéro un au comptoir et que le texte est fait pour être collé
   ailleurs. `copier()` dans src/lib/notes.ts gère le repli execCommand.
+- **Calcul de dispensation** (`/dispensation`, src/lib/dispensation.ts) :
+  couverture, date d'épuisement, avance/retard, observance. Entièrement pur
+  et SANS AUCUNE PERSISTANCE — ni base, ni localStorage, ni URL (sauf le n°
+  d'autorisation du produit, qui ne désigne personne). Une date de délivrance
+  dit quelque chose d'un patient : elle ne survit pas au rechargement. C'est
+  ainsi que l'invariant « aucune donnée patient » tient ici — par
+  l'architecture, pas par une consigne affichée.
+  La galénique est une unité de calcul (`unite`/`ml`/`g`/`dose`), pas un
+  libellé : `lireConditionnement()` lit la taille d'emballage dans les deux
+  formats (Refdata la met en fin de dénomination, la table Swissmedic en
+  tête) et renvoie null plutôt qu'un chiffre approximatif — le champ reste
+  alors vide, une quantité fausse produirait un verdict faux sans le dire.
+  `mg` est volontairement exclu du vocabulaire d'unités : « cpr 400 mg »
+  deviendrait sinon un emballage de 400 unités. Les gouttes par ml sont un
+  paramètre à l'écran (20 ne vaut que pour les solutions aqueuses).
+  AUCUN VERDICT, aucun seuil, aucune couleur sémantique sur le résultat —
+  décision produit explicite : l'écran rend les quantités (consommé,
+  théoriquement consommé, écart signé, taux, durée couverte) et Damien
+  interprète. Un seuil codé appliquerait le même jugement à une cure de sept
+  jours et à un chronique de trois mois. Ne pas réintroduire de palier.
+  Le champ « reste en main » (optionnel, zéro par défaut) est ce qui sépare
+  une consommation mesurée d'une consommation supposée.
 - **Notes maison** (`product_notes`, migrations 0009+0010+0011) : sur UN produit,
   UN code ATC complet ou UN principe actif (appariement substance côté
   application, champ Swissmedic en texte libre), type OBLIGATOIRE (vocabulaire médicament — le typage cadre
