@@ -176,6 +176,97 @@ ouvrir » va dans le mauvais sens.
   ATTENTION : Supabase tronque toute réponse à 1 000 lignes, limit() au-delà
   est ignoré en silence — paginer par .range() (voir tousLesCodesAtc).
 
+## Aide-mémoire de comptoir — règles d'écriture NON NÉGOCIABLES
+
+Les 36 fiches de `src/data/fiches` viennent du projet `~/comptoir-otc`
+(fusionné le 31.08.2026, sur décision de Damien : les trois volets, pas de
+fichier autonome, liaison ATC pendant le portage). **Les règles ci-dessous
+viennent avec le contenu. Elles existent parce qu'une erreur dans ces fiches
+peut se retrouver face à un patient.**
+
+### Ce que l'aide-mémoire n'est pas
+
+Ni un détecteur d'interactions, ni une base de données. Les interactions,
+doublons et posologies restent vérifiés dans le logiciel d'officine. Ces
+fiches sont une grille de lecture : quoi vérifier, quoi dire, quand appeler.
+Partout où un lecteur pourrait croire à une couverture exhaustive, le texte
+doit le démentir. `compendium.ch` fait foi, pas Pharmadex.
+
+### Méthode
+
+1. **Une fiche à la fois.** Écrire une fiche, s'arrêter, attendre la
+   validation explicite de Damien avant d'en commencer une autre. Jamais deux
+   fiches dans un même élan, même si la demande semble le permettre.
+2. **Éditions ciblées** dans `otc.ts` / `rx.ts` / `lpd.ts` (+ l'entrée
+   correspondante de `catalogue.ts`). Ne JAMAIS régénérer ces fichiers en
+   masse : ils ont été produits une fois depuis comptoir-otc.html, ce script
+   n'a plus de raison d'être et le contenu ne vit plus qu'ici.
+3. **Un commit sitôt la fiche validée**, décrivant ce qui a été vérifié. Le
+   journal git EST la trace de validation — c'est pour cela que le contenu
+   reste en dépôt et n'est pas passé en base.
+4. **Rapport de fin de fiche** dans la conversation : ce qui a été vérifié et
+   où, les `non vérifié` restants avec leur raison, les sources tentées sans
+   succès (qui figurent aussi dans le tableau `Sources` de la fiche).
+
+### Sourcing — la règle qui prime sur toutes les autres
+
+**AUCUN CONTENU DE MÉMOIRE.** Chaque posologie, contre-indication, catégorie
+de remise, interaction ou statut de remboursement est vérifié en ligne
+pendant la session qui écrit la fiche, sur une source ouverte, et daté.
+
+1. **Suisses, prioritaires** — compendium.ch, swissmedicinfo.ch (information
+   professionnelle) · Swissmedic · OFSP et Liste des spécialités · Fedlex
+   (LPTh, OMéd, LAMal, OAMal, OPAS, OCStup) · LiMA · pharmaSuisse, RBP V,
+   FPH · autorités vaudoises · Tox Info Suisse · sociétés suisses.
+2. **Internationales, TOUJOURS signalées comme non suisses** — Embryotox,
+   CRAT (grossesse, allaitement) · KDIGO (rénal) · listes PIM du sujet âgé.
+3. **Jamais citées** — bases sous authentification (Pharmavista, Documedis,
+   compendium sous login HIN) · RCP européens ou français présentés comme
+   applicables en Suisse · toute donnée retenue de mémoire.
+
+Applications : les **interactions** ne viennent que de la rubrique
+« Interactions » de l'IP suisse (introuvable en accès ouvert → `non
+vérifié`) ; les **catégories de remise** se vérifient PAR PRÉSENTATION (la
+même molécule change de catégorie selon le conditionnement) ; le
+**remboursement** est toujours daté et présenté comme « à revérifier ».
+Chaque fiche finit par une section `Sources` repliée.
+
+### Le marqueur `non vérifié`
+
+Toute affirmation utile mais non vérifiée s'écrit
+`<span class='nv'>non vérifié</span>`, suivie de **pourquoi** et de **où
+compléter**. Un `non vérifié` honnête vaut mieux qu'une posologie plausible.
+Ne jamais le supprimer en reformulant : on le résout en vérifiant, ou on le
+garde.
+
+### Deux échelles, jamais mélangées
+
+Une fiche porte UNE série, selon son volet. **N1–N4** (OTC) répond à « où
+j'envoie ce patient » : N1 urgences maintenant · N2 médecin aujourd'hui ·
+N3 médecin traitant sous 48–72 h · N4 comptoir. **V1–V4** (ordonnances)
+répond à « que fais-je de cette ordonnance » : V1 ne pas délivrer, contacter
+le prescripteur · V2 délivrer après clarification · V3 délivrer avec mise en
+garde et note au dossier · V4 conseil standard. Couleurs communes,
+sémantiques distinctes.
+
+### Technique
+
+- `catalogue.ts` (métadonnées, ~15 Ko) est toujours chargé : il alimente la
+  recherche du comptoir et le rattachement aux produits. Les sections
+  (424 Ko) arrivent par `import()` dynamique, volet par volet — la règle d'or
+  interdit d'en charger le poids sur l'écran de recherche.
+- Le champ `atc` d'une entrée rattache la fiche aux médicaments : un code ATC
+  qui commence par l'un de ses préfixes fait remonter la fiche sur la fiche
+  produit. Même convention que `atc_resources`. Préfixes vérifiés contre
+  `src/lib/atc-libelles.json`.
+- Le HTML en ligne des chaînes (`<b>`, `<a>`, `<span class="dose|cat|n|nv">`)
+  est rendu par `dangerouslySetInnerHTML` : contenu rédigé au dépôt et relu à
+  chaque commit, jamais une saisie d'utilisateur. Vocabulaire clos — ne pas
+  l'élargir sans ajouter la classe correspondante à `src/index.css`.
+- Les checklists (`check`) gardent leur état dans le composant et le perdent
+  en quittant la fiche : une case cochée pour un patient ne doit jamais
+  réapparaître cochée pour le suivant.
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
 - Recherche plein texte DANS les notices (elles restent chez Refdata).

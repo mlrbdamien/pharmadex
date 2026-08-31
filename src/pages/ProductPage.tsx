@@ -30,6 +30,7 @@ import type { ProductRow } from '../lib/types';
 import { bestByType, fetchNoticeHtml, listNotices, NOTICE_SHORTCUTS } from '../lib/notices';
 import type { Notice } from '../lib/notices';
 import type { Resource, ScanHit } from '../lib/types';
+import { fichesPourAtc, LIBELLES_VOLET } from '../data/fiches';
 
 /** Catégorie de remise : lisible à un mètre, du plus strict au plus libre. */
 const CATEGORIES: Record<string, { libelle: string; classes: string }> = {
@@ -56,6 +57,10 @@ export function ProductPage() {
   const [linking, setLinking] = useState(false);
   const [delisted, setDelisted] = useState(false);
   const [substancesOuvertes, setSubstancesOuvertes] = useState(false);
+
+  // Le catalogue des fiches est statique et léger : pas de requête, pas
+  // d'état de chargement — seules leurs sections arrivent à la demande.
+  const fiches = fichesPourAtc(hit?.product.atc_code);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const noticeFrame = useRef<HTMLIFrameElement>(null);
@@ -419,6 +424,36 @@ export function ProductPage() {
                   !linking && <p className="text-ink-3 text-[13px]">Aucune pour ce produit ou sa classe.</p>
                 )}
               </section>
+
+              {/* Aide-mémoire : la fiche de classe que le code ATC du produit
+                  fait remonter. C'est le lien qui justifie d'avoir réuni les
+                  deux outils — scanner un Temesta ouvre les benzodiazépines. */}
+              {fiches.length > 0 && (
+                <section>
+                  <h2 className="etiquette mb-1.5">Aide-mémoire</h2>
+                  <div className="border-line bg-surface-1 shadow-card rounded-card overflow-hidden border">
+                    {fiches.map((fiche) => (
+                      <Link
+                        key={fiche.id}
+                        to={`/f/${fiche.id}`}
+                        className="border-line hover:bg-surface-2 flex items-baseline gap-2.5 border-b px-3 py-2 last:border-0"
+                      >
+                        <span className="donnee text-accent shrink-0 text-[12px] font-semibold">
+                          {fiche.code}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="text-ink block truncate text-[13.5px] font-medium">
+                            {fiche.titre}
+                          </span>
+                          <span className="text-ink-3 block truncate text-[12px]">
+                            {LIBELLES_VOLET[fiche.volet]}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {packages.length > 0 && (
                 <section>

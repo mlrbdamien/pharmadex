@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, SearchX } from 'lucide-react';
+import { BookOpen, Loader2, Plus, SearchX } from 'lucide-react';
 import { SearchBar } from '../components/SearchBar';
 import { TagFilter } from '../components/TagFilter';
 import { ResourceCard } from '../components/ResourceCard';
@@ -15,6 +15,7 @@ import {
   shouldLogMiss,
 } from '../lib/resources';
 import { normalizeScannedCode, scanGtin, searchProducts } from '../lib/products';
+import { chercherFiches, LIBELLES_VOLET } from '../data/fiches';
 import { ProductCard } from '../components/ProductCard';
 import { Pill, StickyNote } from 'lucide-react';
 import type { ProductRow, Resource, ScanHit } from '../lib/types';
@@ -36,6 +37,10 @@ export function Home() {
   const lastLogged = useRef<string | null>(null);
   const requestId = useRef(0);
   const trimmed = query.trim();
+
+  // Les fiches de l'aide-mémoire se cherchent en local sur leur catalogue :
+  // 36 entrées, aucun aller-retour, aucun chargement de leurs sections.
+  const ficheMatches = useMemo(() => (trimmed ? chercherFiches(trimmed) : []), [trimmed]);
 
   // Recherche serveur, débounce 150 ms. Tant qu'elle est en vol, l'affichage
   // retombe sur le filtre local : l'écran n'est jamais vide entre deux frappes.
@@ -110,7 +115,8 @@ export function Home() {
   //    pas deux secondes. Ce qui reste est un terme abouti, pas « gross ».
   useEffect(() => {
     if (!trimmed || remote === null || remote.length > 0 || scan !== null) return;
-    if (productMatches.length > 0) return; // un produit trouvé est une réponse
+    // Un produit ou une fiche trouvés sont des réponses : ce n'est pas un vide.
+    if (productMatches.length > 0 || ficheMatches.length > 0) return;
     const timer = setTimeout(() => {
       if (shouldLogMiss(trimmed, lastLogged.current)) {
         lastLogged.current = trimmed;
@@ -118,7 +124,7 @@ export function Home() {
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [trimmed, remote, scan, productMatches]);
+  }, [trimmed, remote, scan, productMatches, ficheMatches]);
 
   // Entrée ouvre la fiche du premier résultat — même geste que le clic.
   const openFirst = useCallback(() => {
@@ -175,7 +181,7 @@ export function Home() {
             <Loader2 className="size-4 animate-spin" /> Chargement…
           </p>
         ) : trimmed ? (
-          scan || results.length > 0 || productMatches.length > 0 ? (
+          scan || results.length > 0 || productMatches.length > 0 || ficheMatches.length > 0 ? (
             <div className="mt-4 space-y-2">
               {!scan && productMatches.length > 0 && (
                 <div className="rounded-lg border border-line bg-surface-1">
@@ -201,6 +207,27 @@ export function Home() {
                           {product.atc_code}
                         </span>
                       )}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              {ficheMatches.length > 0 && (
+                <div className="rounded-lg border border-line bg-surface-1">
+                  {ficheMatches.map((fiche) => (
+                    <Link
+                      key={fiche.id}
+                      to={`/f/${fiche.id}`}
+                      className="flex w-full items-center gap-2 border-b border-line px-3 py-2
+                                 text-left text-sm last:border-0 hover:bg-accent-soft"
+                    >
+                      <BookOpen className="size-4 shrink-0 text-accent" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate font-medium text-ink">
+                        {fiche.titre}
+                      </span>
+                      <span className="shrink-0 text-xs text-ink-3">
+                        {LIBELLES_VOLET[fiche.volet]}
+                      </span>
+                      <span className="shrink-0 font-mono text-xs text-ink-3">{fiche.code}</span>
                     </Link>
                   ))}
                 </div>

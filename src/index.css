@@ -50,6 +50,11 @@
   --critical: #c9432b;
   --critical-text: #a8351f;
   --critical-soft: #fbeeea;
+  /* Entre l'ambre et le rouge : le N2 du triage, « aujourd'hui » — ni
+     différable, ni vital. Sans lui, N2 et N3 se confondraient. */
+  --serious: #a8560f;
+  --serious-text: #8c4708;
+  --serious-soft: #fbeee2;
   --info: #2563a8;
   --info-text: #1f568f;
   --info-soft: #e8f0fa;
@@ -99,6 +104,9 @@
     --critical: #ef6a52;
     --critical-text: #f08a75;
     --critical-soft: #2a1613;
+    --serious: #e08a4f;
+    --serious-text: #e8a172;
+    --serious-soft: #2b1a0d;
     --info: #6fa8e0;
     --info-text: #8ab4e8;
     --info-soft: #142234;
@@ -141,6 +149,9 @@
     --critical: #ef6a52;
     --critical-text: #f08a75;
     --critical-soft: #2a1613;
+    --serious: #e08a4f;
+    --serious-text: #e8a172;
+    --serious-soft: #2b1a0d;
     --info: #6fa8e0;
     --info-text: #8ab4e8;
     --info-soft: #142234;
@@ -176,6 +187,9 @@
   --color-critical: var(--critical);
   --color-critical-text: var(--critical-text);
   --color-critical-soft: var(--critical-soft);
+  --color-serious: var(--serious);
+  --color-serious-text: var(--serious-text);
+  --color-serious-soft: var(--serious-soft);
   --color-info: var(--info);
   --color-info-text: var(--info-text);
   --color-info-soft: var(--info-soft);
@@ -235,3 +249,90 @@ body {
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Aide-mémoire de comptoir — vocabulaire typographique des fiches.
+
+   Ces classes vivent DANS le contenu rédigé (src/data/fiches), pas dans les
+   composants : elles sont posées à la main au fil du texte pour marquer un
+   dosage, une catégorie de remise, un niveau d'orientation. Vocabulaire clos
+   et vérifié — voir le commentaire de Section dans data/fiches/types.ts.
+   --------------------------------------------------------------------------- */
+
+/* Un dosage, un seuil, une durée : toute grandeur qui doit se relire sans
+   ambiguïté et ne jamais se couper en fin de ligne. */
+.dose,
+.tel,
+.fiche a[href^='tel:'] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+/* « non vérifié » : le marqueur qui dit qu'une affirmation n'a pas été
+   sourcée pendant la session qui l'a écrite. Le pointillé le distingue d'un
+   simple avertissement. */
+.nv {
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  color: var(--warning-text);
+  border: 1px dashed var(--warning);
+  border-radius: 4px;
+  padding: 0 0.35em;
+  white-space: nowrap;
+}
+
+/* Catégorie de remise Swissmedic. */
+.cat {
+  font-family: var(--font-mono);
+  font-size: 0.72em;
+  font-weight: 700;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  padding: 0 0.3em;
+  white-space: nowrap;
+}
+.cat-A { color: var(--critical-text); }
+.cat-B { color: var(--accent); }
+.cat-D,
+.cat-E { color: var(--text-secondary); }
+.cat-NV { color: var(--warning-text); }
+
+/* Niveau d'orientation N1–N4 : la pastille dit quand, sa couleur dit
+   l'urgence. Encre posée sur aplat — d'où --on-accent pour le N4. */
+.n {
+  font-family: var(--font-mono);
+  font-size: 0.7em;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 9px;
+  padding: 0.05em 0.45em;
+  white-space: nowrap;
+}
+.n1 { background: var(--critical); }
+.n2 { background: var(--serious); }
+.n3 { background: var(--info); }
+.n4 { background: var(--accent); color: var(--on-accent); }
+
+/* Le corps d'une fiche : prose dense, liens teal, gras à l'encre pleine. */
+.fiche a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.fiche b { color: var(--text-primary); font-weight: 600; }
+.fiche em, .fiche i { font-style: italic; }
+
+/* Prose des fiches : paragraphes espacés, tableaux denses et alignés haut. */
+.fiche p + p,
+.fiche p + ul,
+.fiche p + ol { margin-top: 0.5rem; }
+.fiche th {
+  padding: 0.4rem 0.6rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.92em;
+}
+.fiche td { padding: 0.4rem 0.6rem; }
+.fiche thead th { white-space: nowrap; }
