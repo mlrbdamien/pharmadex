@@ -237,12 +237,7 @@ export function Dispensation() {
 
       <main className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-5xl">
-          <p className="border-line bg-surface-2 text-ink-2 rounded-control border px-3 py-2 text-[13px]">
-            Aucun nom, aucune initiale, aucune donnée de patient — le calcul ne quitte pas
-            cette page et rien n'est enregistré.
-          </p>
-
-          <div className="mt-4 grid gap-4 lg:grid-cols-5 lg:items-start">
+          <div className="grid gap-4 lg:grid-cols-5 lg:items-start">
             {/* ---------------------------------------------------------- */}
             <div className="flex flex-col gap-4 lg:col-span-3">
               <Card>
