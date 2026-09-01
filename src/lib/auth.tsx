@@ -14,6 +14,8 @@ type AuthValue = {
   status: AuthStatus;
   email: string | null;
   canEdit: boolean;
+  /** Droit d'administrer les accès — distinct du droit d'éditer. */
+  isAdmin: boolean;
   signOut: () => Promise<void>;
 };
 
@@ -23,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [email, setEmail] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setEmail(null);
           setCanEdit(false);
+          setIsAdmin(false);
           setStatus('signed-out');
         }
         return;
@@ -42,13 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // zéro ligne = email hors allowlist.
       const { data } = await supabase
         .from('allowed_emails')
-        .select('can_edit')
+        .select('can_edit,is_admin')
         .eq('email', address)
         .maybeSingle();
 
       if (cancelled) return;
       setEmail(address);
       setCanEdit(Boolean(data?.can_edit));
+      // Administrer et éditer sont deux droits distincts : rédiger une fiche
+      // et donner un accès ne sont pas le même acte.
+      setIsAdmin(Boolean(data?.is_admin));
       setStatus(data ? 'ready' : 'denied');
     }
 
@@ -72,8 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, email, canEdit, signOut }),
-    [status, email, canEdit, signOut],
+    () => ({ status, email, canEdit, isAdmin, signOut }),
+    [status, email, canEdit, isAdmin, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

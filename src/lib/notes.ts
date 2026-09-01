@@ -137,11 +137,11 @@ export type NotesIndex = {
   aReverifier: number;
 };
 
-export async function chargerNotesIndex(staleMonths: number): Promise<NotesIndex> {
-  const { data, error } = await supabase
-    .from('product_notes')
-    .select('authorization_nr,atc_prefix,substance,verified_on');
-  const rows = error ? [] : (data ?? []);
+/**
+ * L'index se déduit des notes déjà chargées : une seule requête sert au
+ * marquage des produits ET à la recherche, qui a besoin du corps.
+ */
+export function indexDepuisNotes(rows: ProductNote[], staleMonths: number): NotesIndex {
   const limite = new Date();
   limite.setMonth(limite.getMonth() - staleMonths);
   return {

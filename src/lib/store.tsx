@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Resource } from './types';
 import { listAll, STALE_MONTHS } from './resources';
 import { listTags } from './tags';
-import { chargerNotesIndex, type NotesIndex } from './notes';
+import { indexDepuisNotes, listAllNotes, type NotesIndex, type ProductNote } from './notes';
 import { listerFiches, type EntreeFiche } from './fiches';
 
 /**
@@ -15,6 +15,8 @@ type StoreValue = {
   resources: Resource[];
   tags: string[];
   notesIndex: NotesIndex | null;
+  /** Les notes entières : la recherche a besoin de leur corps. */
+  notes: ProductNote[];
   /** Métadonnées des fiches, sans leur contenu — recherche et liaison ATC. */
   fiches: EntreeFiche[];
   loading: boolean;
@@ -28,6 +30,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [resources, setResources] = useState<Resource[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [notesIndex, setNotesIndex] = useState<NotesIndex | null>(null);
+  const [notes, setNotes] = useState<ProductNote[]>([]);
   const [fiches, setFiches] = useState<EntreeFiche[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +40,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const [rows, names, notes, catalogue] = await Promise.all([
         listAll(),
         listTags(),
-        chargerNotesIndex(STALE_MONTHS),
+        listAllNotes(),
         listerFiches(),
       ]);
       setResources(rows);
       setTags(names);
-      setNotesIndex(notes);
+      setNotes(notes);
+      setNotesIndex(indexDepuisNotes(notes, STALE_MONTHS));
       setFiches(catalogue);
       setError(null);
     } catch (cause) {
@@ -57,8 +61,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ resources, tags, notesIndex, fiches, loading, error, refresh }),
-    [resources, tags, notesIndex, fiches, loading, error, refresh],
+    () => ({ resources, tags, notesIndex, notes, fiches, loading, error, refresh }),
+    [resources, tags, notesIndex, notes, fiches, loading, error, refresh],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

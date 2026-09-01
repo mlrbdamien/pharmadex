@@ -1,12 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { pushSeed } from '../lib/searchSeed';
 import { LIENS_REFERENCES } from '../lib/refs';
+import { Palette } from './Palette';
 import {
   BookOpen,
   Calculator,
   ExternalLink,
-  ListX,
   Lock,
   LogOut,
   Menu,
@@ -16,6 +15,7 @@ import {
   Pill,
   Plus,
   Search,
+  SlidersHorizontal,
   StickyNote,
   BookMarked,
   type LucideIcon,
@@ -39,6 +39,8 @@ type Entree = {
   libelle: string;
   icone: LucideIcon;
   editeur?: boolean;
+  /** Réservé aux administrateurs — un cran au-dessus d'éditeur. */
+  admin?: boolean;
   compteur?: (c: Compteurs) => number | null;
   alerte?: (c: Compteurs) => boolean;
   /** `end` de NavLink : actif seulement sur correspondance exacte. */
@@ -88,19 +90,18 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
     entrees: [
       { to: '/nouveau', libelle: 'Ajouter', icone: Plus, editeur: true },
       {
-        to: '/recherches-vides',
-        libelle: 'Recherches vides',
-        icone: ListX,
-        editeur: true,
-        compteur: (c) => c.recherchesVides,
-        alerte: (c) => (c.recherchesVides ?? 0) > 0,
+        to: '/admin',
+        libelle: 'Administration',
+        icone: SlidersHorizontal,
+        admin: true,
+        alerte: (c) => (c.recherchesVides ?? 0) > 0 || c.liensCasses > 0,
       },
     ],
   },
 ];
 
 export function Rail({ ouvert = false, onFermer }: { ouvert?: boolean; onFermer?: () => void }) {
-  const { email, canEdit, signOut } = useAuth();
+  const { email, canEdit, isAdmin, signOut } = useAuth();
   const compteurs = useCompteurs();
   const navigate = useNavigate();
 
@@ -131,7 +132,8 @@ export function Rail({ ouvert = false, onFermer }: { ouvert?: boolean; onFermer?
             <p className="etiquette mb-1.5 px-2 md:hidden xl:block">{groupe.titre}</p>
             <div className="flex flex-col gap-0.5">
               {groupe.entrees.map((entree) => {
-                const verrouille = entree.editeur && !canEdit;
+                const verrouille =
+                  (entree.editeur && !canEdit) || (entree.admin && !isAdmin);
                 const n = entree.compteur ? entree.compteur(compteurs) : null;
                 const alerte = entree.alerte ? entree.alerte(compteurs) : false;
                 return (
@@ -356,13 +358,17 @@ export function useMenu(): () => void {
 /** Le gabarit commun : rail à gauche, écran courant à droite. */
 export function CoquilleLayout() {
   const [railOuvert, setRailOuvert] = useState(false);
-  const navigate = useNavigate();
+  const [palette, setPalette] = useState({ ouverte: false, saisie: '' });
   const { pathname } = useLocation();
 
   // La douchette fonctionne depuis N'IMPORTE QUEL écran : toute frappe
-  // imprimable hors d'un champ ramène à la recherche, la saisie préservée
-  // dans un tampon (les premiers caractères d'un scan arrivent pendant le
-  // changement de route). `/` ou Ctrl+K y vont aussi, à vide.
+  // imprimable hors d'un champ ouvre la palette de recherche, la saisie
+  // conservée. `/` et Ctrl+K l'ouvrent à vide.
+  //
+  // La palette se superpose au lieu de rediriger vers l'accueil : vérifier un
+  // dosage depuis une fiche ne doit pas faire perdre la fiche. Tant que le
+  // champ n'a pas le focus, les frappes continuent d'arriver ici — d'où
+  // l'accumulation, qui remplace l'ancien tampon partagé.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -375,24 +381,29 @@ export function CoquilleLayout() {
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        navigate('/');
+        setPalette({ ouverte: true, saisie: '' });
         return;
       }
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === '/') {
         event.preventDefault();
-        navigate('/');
+        setPalette({ ouverte: true, saisie: '' });
         return;
       }
       if (event.key.length !== 1) return;
 
       event.preventDefault();
-      pushSeed(event.key);
-      if (pathname !== '/') navigate('/');
+      setPalette((p) => ({
+        ouverte: true,
+        saisie: p.ouverte ? p.saisie + event.key : event.key,
+      }));
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [pathname, navigate]);
+  }, []);
+
+  // Changer d'écran ferme la palette : elle a fait son travail.
+  useEffect(() => setPalette({ ouverte: false, saisie: '' }), [pathname]);
 
   return (
     <div className="flex h-dvh overflow-hidden">
@@ -410,6 +421,11 @@ export function CoquilleLayout() {
           <Outlet />
         </MenuContext.Provider>
       </div>
+      <Palette
+        ouverte={palette.ouverte}
+        saisieInitiale={palette.saisie}
+        onFermer={() => setPalette({ ouverte: false, saisie: '' })}
+      />
     </div>
   );
 }

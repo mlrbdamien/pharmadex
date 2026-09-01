@@ -28,6 +28,22 @@ ouvrir » va dans le mauvais sens.
 - **Coquille** (`src/components/Coquille.tsx`) : rail latéral à groupes
   COMPTOIR / ÉDITION avec compteurs, bloc « État » en pied, `EnteteEcran`
   par page. Toute nouvelle page s'inscrit dans ce gabarit.
+- **Recherche unique** (`src/lib/recherche.ts`, `useRecherche.ts`,
+  `components/Palette.tsx`) : UNE barre, des résultats fusionnés et classés —
+  médicaments, fiches, ressources, notes. Pharmadex avait quatre champs de
+  recherche pour un seul geste mental, ce qui imposait de décider « où je
+  cherche ? » AVANT de taper. Ne jamais réintroduire un champ qui cherche
+  dans une source : les filtres des pages de parcours (Médicaments, Fiches,
+  Ressources) sont autre chose — ils NARROW une liste qu'on parcourt, en
+  composition avec une facette (arbre ATC, volet, tag).
+  Le classement pondère le TYPE : fiche +10, note +8, ressource +5, produit 0.
+  Un médicament est une identification, une fiche est une réponse ; et les
+  produits sont 6 300 contre 36 fiches, donc sans pondération « toux »
+  noierait la fiche sous les antitussifs. Une correspondance exacte de nom
+  garde l'avantage (85 > 70+10) — vérifié.
+  Toute frappe hors d'un champ ouvre la palette EN SUPERPOSITION (plus de
+  redirection vers l'accueil) : vérifier un dosage depuis une fiche ne doit
+  pas faire perdre la fiche. ↑↓ parcourent, Entrée ouvre, Échap ferme.
 - `src/lib` (données et logique) · `src/pages` (une route = un fichier) ·
   `src/components` (présentation).
 - Les commentaires expliquent *pourquoi*, jamais *quoi*.
@@ -284,6 +300,27 @@ sémantiques distinctes.
 - Les checklists (`check`) gardent leur état dans le composant et le perdent
   en quittant la fiche : une case cochée pour un patient ne doit jamais
   réapparaître cochée pour le suivant.
+
+## Administration (migration 0013)
+
+- **Administrer ≠ éditer.** `allowed_emails.is_admin` est distinct de
+  `can_edit` : rédiger une fiche et donner un accès ne sont pas le même acte.
+  Helper `public.is_admin()`, policies d'écriture sur `allowed_emails`
+  réservées aux administrateurs. L'amorçage a donné le droit aux éditeurs
+  existants — sans quoi personne n'aurait pu ouvrir le panneau qui sert à
+  nommer les administrateurs.
+- **Journal** (`public.journal`) : écrit par des TRIGGERS, pas par
+  l'application — une écriture qui contourne l'interface (script, SQL editor)
+  doit laisser la même trace. `consigner()` est SECURITY DEFINER et la table
+  n'a aucune policy d'insertion : une ligne de journal ne se fabrique pas.
+  Lecture réservée aux administrateurs : c'est le seul contenu de Pharmadex
+  qui parle de personnes plutôt que de médicaments.
+- `/admin` a quatre onglets : accès et droits, état des données, qualité
+  (liens cassés, contenus à revérifier, recherches vides — l'écran
+  `/recherches-vides` y est replié et sa page supprimée), journal.
+- Un administrateur ne peut pas se retirer à lui-même l'administration :
+  ce serait fermer la porte de l'intérieur, la seule action irréversible
+  depuis cet écran.
 
 ## Hors périmètre — ne pas construire sans demande explicite
 

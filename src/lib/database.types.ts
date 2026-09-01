@@ -32,9 +32,25 @@ export type Database = {
   public: {
     Tables: {
       allowed_emails: {
-        Row: { email: string; label: string | null; can_edit: boolean; created_at: string };
-        Insert: { email: string; label?: string | null; can_edit?: boolean };
-        Update: { email?: string; label?: string | null; can_edit?: boolean };
+        Row: {
+          email: string;
+          label: string | null;
+          can_edit: boolean;
+          is_admin: boolean;
+          created_at: string;
+        };
+        Insert: {
+          email: string;
+          label?: string | null;
+          can_edit?: boolean;
+          is_admin?: boolean;
+        };
+        Update: {
+          email?: string;
+          label?: string | null;
+          can_edit?: boolean;
+          is_admin?: boolean;
+        };
         Relationships: [];
       };
       resources: {
@@ -136,6 +152,20 @@ export type Database = {
           body?: string;
           verified_on?: string;
         };
+        Relationships: [];
+      };
+      journal: {
+        Row: {
+          id: number;
+          cible: string;
+          cible_id: string | null;
+          action: string;
+          resume: string | null;
+          acteur: string | null;
+          at: string;
+        };
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       fiches: {

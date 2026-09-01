@@ -15,7 +15,7 @@ import { Notes } from './pages/Notes';
 import { ResourceForm } from './pages/ResourceForm';
 import { ResourcePage } from './pages/ResourcePage';
 import { ProductPage } from './pages/ProductPage';
-import { Misses } from './pages/Misses';
+import { Admin } from './pages/Admin';
 
 /** Les routes d'édition n'existent pas pour le compte comptoir (lecture seule). */
 function EditorsOnly({ children }: { children: React.ReactElement }) {
@@ -62,6 +62,7 @@ function Gate() {
           <Route path="/medicaments" element={<Medicaments />} />
           <Route path="/dispensation" element={<Dispensation />} />
           <Route path="/fiches" element={<Fiches />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/f/:id" element={<FichePage />} />
           <Route path="/fiches/nouvelle" element={<FicheEditor />} />
           <Route path="/f/:id/editer" element={<FicheEditor />} />
@@ -82,14 +83,6 @@ function Gate() {
             element={
               <EditorsOnly>
                 <ResourceForm />
-              </EditorsOnly>
-            }
-          />
-          <Route
-            path="/recherches-vides"
-            element={
-              <EditorsOnly>
-                <Misses />
               </EditorsOnly>
             }
           />
