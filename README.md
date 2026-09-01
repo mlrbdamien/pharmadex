@@ -3,7 +3,6 @@
 Les références du comptoir — protocoles maison, pages grossesse / allaitement /
 pédiatrie / infectiologie, sites officiels — derrière une seule barre de recherche.
 
-Aucune donnée patient n'est stockée, nulle part.
 
 ---
 
