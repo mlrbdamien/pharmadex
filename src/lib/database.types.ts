@@ -154,6 +154,12 @@ export type Database = {
         };
         Relationships: [];
       };
+      product_fiches: {
+        Row: { authorization_nr: string; fiche_id: string; created_at: string };
+        Insert: { authorization_nr: string; fiche_id: string };
+        Update: never;
+        Relationships: [];
+      };
       journal: {
         Row: {
           id: number;

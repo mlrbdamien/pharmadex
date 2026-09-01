@@ -21,7 +21,7 @@ export type ProductNote = {
   authorization_nr: string | null;
   atc_prefix: string | null;
   substance: string | null;
-  /** Amendement à une fiche de l'aide-mémoire — quatrième portée. */
+  /** Amendement à une fiche du Sémaphore — quatrième portée. */
   fiche_id: string | null;
   note_type: NoteType;
   body: string;

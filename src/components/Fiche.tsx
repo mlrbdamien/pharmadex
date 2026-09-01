@@ -4,7 +4,7 @@ import { cn } from './ui';
 import type { EntreeFiche, Section, Stop, Tableau, Triage } from '../lib/fiches';
 
 /**
- * Le rendu d'une fiche de l'aide-mémoire, transposé du moteur de
+ * Le rendu d'une fiche du Sémaphore, transposé du moteur de
  * comptoir-otc.html. Les sections se rendent dans un ordre fixe — texte,
  * listes, tableau, checklist, triage, interdits, avertissements — pour que
  * l'œil trouve toujours la même chose au même endroit d'une fiche à l'autre.

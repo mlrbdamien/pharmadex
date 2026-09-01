@@ -16,7 +16,7 @@ import type { Resource } from '../lib/types';
  * L'écran de recherche — et le point de départ d'un service.
  *
  * Une seule barre, des résultats fusionnés et classés : médicaments, fiches
- * de l'aide-mémoire, ressources et notes dans la même liste. Avant, chaque
+ * du Sémaphore, ressources et notes dans la même liste. Avant, chaque
  * source avait son bloc et son ordre fixe, ce qui noyait la fiche « toux »
  * sous les antitussifs.
  *
@@ -93,7 +93,7 @@ export function Home() {
               autoFocus
               autoComplete="off"
               spellCheck={false}
-              className="placeholder:text-ink-3 flex-1 bg-transparent py-3 text-[16px] outline-none"
+              className="champ-nu placeholder:text-ink-3 flex-1 bg-transparent py-3 text-[16px] outline-none"
             />
             {cherche && <Loader2 className="text-ink-3 size-4 shrink-0 animate-spin" />}
             {q && !cherche && (

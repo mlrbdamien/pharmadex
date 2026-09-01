@@ -138,7 +138,7 @@ export function FicheEditor() {
           <p className="text-ink-3 text-sm">
             Réservé aux éditeurs.{' '}
             <Link to="/fiches" className="text-accent underline">
-              Retour à l’aide-mémoire
+              Retour au Sémaphore
             </Link>
           </p>
         </main>

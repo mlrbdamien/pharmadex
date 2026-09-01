@@ -61,7 +61,7 @@ export function Palette({
   return (
     <div
       data-palette
-      className="fixed inset-0 z-50 flex justify-center px-4 pt-[10vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[10vh]"
       role="dialog"
       aria-modal="true"
       aria-label="Recherche"
@@ -91,12 +91,14 @@ export function Palette({
             placeholder="Médicament, fiche, ressource, note — ou scan de la boîte"
             autoComplete="off"
             spellCheck={false}
-            className="placeholder:text-ink-3 flex-1 bg-transparent py-3.5 text-[16px] outline-none"
+            className="champ-nu placeholder:text-ink-3 flex-1 bg-transparent py-3.5 text-[16px] outline-none"
           />
           {cherche && <Loader2 className="text-ink-3 size-4 shrink-0 animate-spin" />}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Ni `flex-1`, ni étirement du parent : la palette épouse la
+            hauteur de ses résultats au lieu de remplir l'écran. */}
+        <div className="min-h-0 overflow-y-auto">
           {resultats.length > 0 ? (
             <ListeResultats
               resultats={resultats}

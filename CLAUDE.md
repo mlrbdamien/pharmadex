@@ -26,8 +26,9 @@ ouvrir » va dans le mauvais sens.
   rayons `rounded-card`/`rounded-control`. **Jamais de couleurs Tailwind
   brutes (slate-500, teal-700…)** : toujours les tokens.
 - **Coquille** (`src/components/Coquille.tsx`) : rail latéral à groupes
-  COMPTOIR / ÉDITION avec compteurs, bloc « État » en pied, `EnteteEcran`
-  par page. Toute nouvelle page s'inscrit dans ce gabarit.
+  COMPTOIR / ÉDITION avec compteurs et `EnteteEcran` par page. Le bloc
+  « État » du pied a été retiré : la console `/admin` le fait mieux, et un
+  chiffre affiché à deux endroits finit par diverger. Toute nouvelle page s'inscrit dans ce gabarit.
 - **Recherche unique** (`src/lib/recherche.ts`, `useRecherche.ts`,
   `components/Palette.tsx`) : UNE barre, des résultats fusionnés et classés —
   médicaments, fiches, ressources, notes. Pharmadex avait quatre champs de
@@ -41,6 +42,9 @@ ouvrir » va dans le mauvais sens.
   produits sont 6 300 contre 36 fiches, donc sans pondération « toux »
   noierait la fiche sous les antitussifs. Une correspondance exacte de nom
   garde l'avantage (85 > 70+10) — vérifié.
+  Un champ posé dans une enveloppe qui montre déjà le focus porte
+  `.champ-nu` : sans quoi la règle `:focus-visible` globale lui dessine un
+  second anneau, de rayon différent.
   Toute frappe hors d'un champ ouvre la palette EN SUPERPOSITION (plus de
   redirection vers l'accueil) : vérifier un dosage depuis une fiche ne doit
   pas faire perdre la fiche. ↑↓ parcourent, Entrée ouvre, Échap ferme.
@@ -192,7 +196,11 @@ ouvrir » va dans le mauvais sens.
   ATTENTION : Supabase tronque toute réponse à 1 000 lignes, limit() au-delà
   est ignoré en silence — paginer par .range() (voir tousLesCodesAtc).
 
-## Aide-mémoire de comptoir — règles d'écriture NON NÉGOCIABLES
+## Sémaphore — règles d'écriture NON NÉGOCIABLES
+
+Nom choisi par Damien le 31.08.2026 en remplacement d'« aide-mémoire » : ces
+fiches signalent quoi faire — niveaux d'orientation N1–N4, blocs « ne pas
+délivrer », avertissements. Ne pas revenir à l'ancien nom.
 
 Les 36 fiches viennent du projet `~/comptoir-otc` (fusionné le 31.08.2026 :
 les trois volets, pas de fichier autonome, liaison ATC pendant le portage).
@@ -205,7 +213,7 @@ erreur dans ces fiches peut se retrouver face à un patient.** Elles étaient
 tenues par le rituel git ; elles ne reposent plus que sur la discipline de
 qui édite. Un formulaire n'empêche personne d'écrire de mémoire.
 
-### Ce que l'aide-mémoire n'est pas
+### Ce que le Sémaphore n'est pas
 
 Ni un détecteur d'interactions, ni une base de données. Les interactions,
 doublons et posologies restent vérifiés dans le logiciel d'officine. Ces
@@ -280,10 +288,14 @@ sémantiques distinctes.
   recherche du comptoir et le rattachement aux produits. Les sections
   n'arrivent que sur `lireFiche(id)`, pour la fiche ouverte. La règle d'or
   interdit de charger 424 Ko pour afficher une liste.
-- Le champ `atc` rattache la fiche aux médicaments : un code ATC qui commence
-  par l'un de ses préfixes fait remonter la fiche sur la fiche produit. Même
-  convention que `atc_resources`. Préfixes vérifiés contre
-  `src/lib/atc-libelles.json`.
+- **Deux chemins vers un médicament**, comme pour les ressources. Le champ
+  `atc` de la fiche est le chemin LARGE : un code produit qui commence par
+  l'un de ses préfixes la fait remonter, sans entretien (convention
+  `atc_resources` ; préfixes vérifiés contre `src/lib/atc-libelles.json`).
+  `product_fiches` (migration 0014) est le chemin FIN : la liaison à la main,
+  pour le cas d'espèce que l'ATC ne dit pas. Sur la fiche produit, seules les
+  liaisons manuelles portent un bouton de déliaison — l'ATC se corrige dans
+  la fiche, pas depuis le produit.
 - **L'éditeur est un formulaire à huit champs facultatifs**, pas un agenceur
   de blocs : le rendu suit un ordre fixe (p → ul → ol → table → check →
   triage → stop → warn), l'ordre n'a jamais été une décision de rédaction.

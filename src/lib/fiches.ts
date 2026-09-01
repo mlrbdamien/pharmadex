@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { fold } from './resources';
 
 /**
- * L'aide-mémoire de comptoir : 36 fiches venues du projet comptoir-otc,
+ * Le Sémaphore du comptoir : 36 fiches venues du projet comptoir-otc,
  * désormais en base et modifiables depuis l'application.
  *
  * Le contenu était statique et compilé ; le journal git tenait lieu de trace
@@ -63,7 +63,7 @@ export type EntreeFiche = {
   /**
    * Préfixes ATC couverts. Un produit dont le code commence par l'un d'eux
    * fait remonter la fiche — même convention que `atc_resources`. C'est le
-   * lien qui justifie que l'aide-mémoire vive dans Pharmadex.
+   * lien qui justifie que le Sémaphore vive dans Pharmadex.
    */
   atc: string[];
   rang: number;

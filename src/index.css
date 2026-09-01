@@ -223,6 +223,13 @@ body {
   border-radius: var(--radius-control);
 }
 
+/* Un champ posé DANS une enveloppe qui montre déjà le focus (barre de
+   recherche, palette) ne doit pas dessiner le sien : deux traits
+   concentriques de rayons différents, c'est ce qu'on voyait. */
+.champ-nu:focus-visible {
+  box-shadow: none;
+}
+
 /* Toute colonne de chiffres s'aligne. */
 .tabular {
   font-variant-numeric: tabular-nums;
@@ -251,7 +258,7 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Aide-mémoire de comptoir — vocabulaire typographique des fiches.
+   Sémaphore de comptoir — vocabulaire typographique des fiches.
 
    Ces classes vivent DANS le contenu rédigé (src/data/fiches), pas dans les
    composants : elles sont posées à la main au fil du texte pour marquer un

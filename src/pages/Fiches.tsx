@@ -11,7 +11,7 @@ import { useAuth } from '../lib/auth';
 const VOLETS: Volet[] = ['otc', 'rx', 'lpd'];
 
 /**
- * L'aide-mémoire de comptoir : trois volets, 36 fiches. L'état de
+ * Le Sémaphore du comptoir : trois volets, 36 fiches. L'état de
  * consultation vit dans l'URL, comme au catalogue des médicaments — revenir
  * d'une fiche retrouve le volet et le filtre.
  */
@@ -47,7 +47,7 @@ export function Fiches() {
   return (
     <>
       <EnteteEcran
-        titre="Aide-mémoire"
+        titre="Sémaphore"
         contexte={catalogue.length > 0 ? `${catalogue.length} fiches` : undefined}
         onMenu={useMenu()}
         actions={

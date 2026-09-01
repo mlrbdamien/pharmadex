@@ -218,3 +218,38 @@ export async function resourceLinks(resourceId: string): Promise<ResourceLinks> 
   if (error) throw error;
   return (data as ResourceLinks) ?? { products: [], atc: [] };
 }
+
+// ---------------------------------------------------------------------------
+// Liaison manuelle fiche du Sémaphore ↔ médicament
+//
+// Les préfixes ATC d'une fiche la font remonter sur toute une classe : large,
+// sans entretien, mais aveugle aux cas d'espèce. Cette liaison-ci est le
+// pendant fin, produit par produit — même dualité que atc_resources /
+// product_resources.
+// ---------------------------------------------------------------------------
+
+export async function listFichesLiees(authorizationNr: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('product_fiches')
+    .select('fiche_id')
+    .eq('authorization_nr', authorizationNr);
+  if (error) return [];
+  return (data ?? []).map((ligne) => ligne.fiche_id);
+}
+
+export async function linkFiche(authorizationNr: string, ficheId: string): Promise<void> {
+  const { error } = await supabase
+    .from('product_fiches')
+    .insert({ authorization_nr: authorizationNr, fiche_id: ficheId });
+  // 23505 = liaison déjà existante : un double clic n'est pas une erreur.
+  if (error && error.code !== '23505') throw error;
+}
+
+export async function unlinkFiche(authorizationNr: string, ficheId: string): Promise<void> {
+  const { error } = await supabase
+    .from('product_fiches')
+    .delete()
+    .eq('authorization_nr', authorizationNr)
+    .eq('fiche_id', ficheId);
+  if (error) throw error;
+}

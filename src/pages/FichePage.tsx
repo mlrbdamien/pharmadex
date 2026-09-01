@@ -28,7 +28,7 @@ import {
 type Depliage = 'fiche' | 'ouvert' | 'ferme';
 
 /**
- * Une fiche de l'aide-mémoire, avec ses amendements en tête.
+ * Une fiche du Sémaphore, avec ses amendements en tête.
  *
  * Deux façons de la corriger, qui ne répondent pas à la même question :
  * l'édition réécrit le texte de référence (éditeurs, écran dédié) ;
@@ -79,7 +79,7 @@ export function FichePage() {
   if (chargement) {
     return (
       <>
-        <EnteteEcran titre="Aide-mémoire" onMenu={ouvrirMenu} />
+        <EnteteEcran titre="Sémaphore" onMenu={ouvrirMenu} />
         <main className="flex flex-1 items-center justify-center">
           <Loader2 className="text-ink-3 size-5 animate-spin" />
         </main>
@@ -90,12 +90,12 @@ export function FichePage() {
   if (!fiche) {
     return (
       <>
-        <EnteteEcran titre="Aide-mémoire" onMenu={ouvrirMenu} />
+        <EnteteEcran titre="Sémaphore" onMenu={ouvrirMenu} />
         <main className="flex flex-1 items-center justify-center">
           <p className="text-ink-3 text-sm">
             Fiche inconnue.{' '}
             <Link to="/fiches" className="text-accent underline">
-              Retour à l’aide-mémoire
+              Retour au Sémaphore
             </Link>
           </p>
         </main>
@@ -106,7 +106,7 @@ export function FichePage() {
   return (
     <>
       <EnteteEcran
-        titre="Aide-mémoire"
+        titre="Sémaphore"
         contexte={LIBELLES_VOLET[fiche.volet]}
         onMenu={ouvrirMenu}
         actions={

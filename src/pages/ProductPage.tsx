@@ -19,6 +19,9 @@ import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import {
+  linkFiche,
+  listFichesLiees,
+  unlinkFiche,
   linkDetails,
   listGenerics,
   listPackages,
@@ -31,7 +34,8 @@ import type { ProductRow } from '../lib/types';
 import { bestByType, fetchNoticeHtml, listNotices, NOTICE_SHORTCUTS } from '../lib/notices';
 import type { Notice } from '../lib/notices';
 import type { Resource, ScanHit } from '../lib/types';
-import { fichesPourAtc, LIBELLES_VOLET } from '../lib/fiches';
+import { chercherFiches, fichesPourAtc, LIBELLES_VOLET } from '../lib/fiches';
+import type { EntreeFiche } from '../lib/fiches';
 
 /** Catégorie de remise : lisible à un mètre, du plus strict au plus libre. */
 const CATEGORIES: Record<string, { libelle: string; classes: string }> = {
@@ -62,7 +66,18 @@ export function ProductPage() {
   // Le catalogue des fiches est statique et léger : pas de requête, pas
   // d'état de chargement — seules leurs sections arrivent à la demande.
   const { fiches: catalogue } = useStore();
-  const fiches = fichesPourAtc(catalogue, hit?.product.atc_code);
+  const parAtc = fichesPourAtc(catalogue, hit?.product.atc_code);
+  const [liensFiches, setLiensFiches] = useState<string[]>([]);
+  const rechargerFiches = useCallback(async () => {
+    if (nr) setLiensFiches(await listFichesLiees(nr));
+  }, [nr]);
+  useEffect(() => void rechargerFiches(), [rechargerFiches]);
+  // Une fiche liée à la main peut aussi être remontée par l'ATC : on ne
+  // l'affiche qu'une fois, et c'est la liaison manuelle qui prime (elle
+  // porte un bouton de déliaison).
+  const fichesLiees = catalogue.filter(
+    (f) => liensFiches.includes(f.id) && !parAtc.some((a) => a.id === f.id),
+  );
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const noticeFrame = useRef<HTMLIFrameElement>(null);
@@ -427,35 +442,16 @@ export function ProductPage() {
                 )}
               </section>
 
-              {/* Aide-mémoire : la fiche de classe que le code ATC du produit
-                  fait remonter. C'est le lien qui justifie d'avoir réuni les
-                  deux outils — scanner un Temesta ouvre les benzodiazépines. */}
-              {fiches.length > 0 && (
-                <section>
-                  <h2 className="etiquette mb-1.5">Aide-mémoire</h2>
-                  <div className="border-line bg-surface-1 shadow-card rounded-card overflow-hidden border">
-                    {fiches.map((fiche) => (
-                      <Link
-                        key={fiche.id}
-                        to={`/f/${fiche.id}`}
-                        className="border-line hover:bg-surface-2 flex items-baseline gap-2.5 border-b px-3 py-2 last:border-0"
-                      >
-                        <span className="donnee text-accent shrink-0 text-[12px] font-semibold">
-                          {fiche.code}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="text-ink block truncate text-[13.5px] font-medium">
-                            {fiche.titre}
-                          </span>
-                          <span className="text-ink-3 block truncate text-[12px]">
-                            {LIBELLES_VOLET[fiche.volet]}
-                          </span>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              )}
+              {/* Sémaphore : les fiches que le code ATC fait remonter (large,
+                  sans entretien) ET celles liées à la main (le cas d'espèce
+                  que l'ATC ne dit pas). Seules les secondes se délient. */}
+              <SectionSemaphore
+                nr={product.authorization_nr}
+                parAtc={parAtc}
+                liees={fichesLiees}
+                canEdit={canEdit}
+                onChange={rechargerFiches}
+              />
 
               {packages.length > 0 && (
                 <section>
@@ -508,5 +504,148 @@ export function ProductPage() {
         </div>
       </main>
     </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Les fiches du Sémaphore attachées à un produit, par les deux chemins :
+ * le code ATC (automatique, par classe) et la liaison manuelle (ce produit).
+ * Le second existe parce que le premier est aveugle aux cas d'espèce.
+ */
+function SectionSemaphore({
+  nr,
+  parAtc,
+  liees,
+  canEdit,
+  onChange,
+}: {
+  nr: string;
+  parAtc: EntreeFiche[];
+  liees: EntreeFiche[];
+  canEdit: boolean;
+  onChange: () => Promise<void>;
+}) {
+  const { fiches: catalogue } = useStore();
+  const [choix, setChoix] = useState(false);
+  const [filtre, setFiltre] = useState('');
+
+  const deja = new Set([...parAtc, ...liees].map((f) => f.id));
+  const candidates = catalogue
+    .filter((f) => !deja.has(f.id))
+    .filter((f) => !filtre.trim() || chercherFiches([f], filtre).length > 0)
+    .slice(0, 8);
+
+  if (parAtc.length === 0 && liees.length === 0 && !canEdit) return null;
+
+  return (
+    <section>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <h2 className="etiquette">Sémaphore</h2>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setChoix((c) => !c)}
+            className="text-ink-3 hover:text-accent cursor-pointer text-[12px]"
+          >
+            {choix ? 'Fermer' : 'Lier une fiche'}
+          </button>
+        )}
+      </div>
+
+      {choix && (
+        <div className="border-line bg-surface-1 rounded-card mb-2 border p-2">
+          <input
+            value={filtre}
+            onChange={(event) => setFiltre(event.target.value)}
+            placeholder="Filtrer les fiches…"
+            autoFocus
+            className="border-line bg-surface-1 focus:border-accent rounded-control w-full border px-2 py-1 text-[13px]"
+          />
+          <div className="mt-1.5 flex flex-col">
+            {candidates.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={async () => {
+                  await linkFiche(nr, f.id);
+                  setChoix(false);
+                  setFiltre('');
+                  await onChange();
+                }}
+                className="hover:bg-surface-2 rounded-control flex cursor-pointer items-baseline gap-2 px-1.5 py-1 text-left"
+              >
+                <span className="donnee text-accent shrink-0 text-[11.5px] font-semibold">
+                  {f.code}
+                </span>
+                <span className="text-ink-2 min-w-0 flex-1 truncate text-[13px]">{f.titre}</span>
+              </button>
+            ))}
+            {candidates.length === 0 && (
+              <p className="text-ink-3 px-1.5 py-1 text-[12.5px]">Aucune fiche à lier.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {parAtc.length + liees.length > 0 ? (
+        <div className="border-line bg-surface-1 shadow-card rounded-card overflow-hidden border">
+          {[...liees.map((f) => [f, true] as const), ...parAtc.map((f) => [f, false] as const)].map(
+            ([fiche, manuelle]) => (
+              <div
+                key={fiche.id}
+                className="border-line hover:bg-surface-2 group flex items-baseline gap-2.5 border-b px-3 py-2 last:border-0"
+              >
+                <Link to={`/f/${fiche.id}`} className="flex min-w-0 flex-1 items-baseline gap-2.5">
+                  <span className="donnee text-accent shrink-0 text-[12px] font-semibold">
+                    {fiche.code}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-ink block truncate text-[13.5px] font-medium">
+                      {fiche.titre}
+                    </span>
+                    <span className="text-ink-3 block truncate text-[12px]">
+                      {LIBELLES_VOLET[fiche.volet]}
+                    </span>
+                  </span>
+                </Link>
+                <span
+                  className={cn(
+                    'donnee shrink-0 rounded px-1.5 py-0.5 text-[10.5px]',
+                    manuelle ? 'bg-surface-2 text-ink-3' : 'bg-accent-soft text-accent',
+                  )}
+                  title={
+                    manuelle
+                      ? 'Liée à ce produit'
+                      : `Remontée par la classe ${fiche.atc.join(', ')}`
+                  }
+                >
+                  {manuelle ? 'ce produit' : fiche.atc[0]}
+                </span>
+                {canEdit && manuelle && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await unlinkFiche(nr, fiche.id);
+                      await onChange();
+                    }}
+                    title="Délier"
+                    className="text-ink-3 hover:bg-critical-soft hover:text-critical-text
+                               shrink-0 cursor-pointer rounded p-1"
+                  >
+                    <Unlink className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+      ) : (
+        canEdit && !choix && (
+          <p className="text-ink-3 text-[13px]">Aucune fiche pour ce produit ou sa classe.</p>
+        )
+      )}
+    </section>
   );
 }

@@ -29,7 +29,7 @@ import { cn } from './ui';
  * La coquille de l'application : rail latéral, en-tête d'écran.
  *
  * Transposée de vetements-p24 (direction « Console ») : groupes nommés,
- * compteurs qui font du rail un tableau de bord permanent, bloc d'état en
+ * compteurs qui font du rail un tableau de bord permanent — l'inventaire
  * pied. Adaptations : navigation par routes (NavLink), accent teal, et le
  * bloc d'état montre l'inventaire de Pharmadex.
  */
@@ -60,7 +60,7 @@ const GROUPES: { titre: string; entrees: Entree[] }[] = [
       },
       {
         to: '/fiches',
-        libelle: 'Aide-mémoire',
+        libelle: 'Sémaphore',
         icone: BookOpen,
         compteur: (c) => c.fiches || null,
       },
@@ -224,7 +224,6 @@ export function Rail({ ouvert = false, onFermer }: { ouvert?: boolean; onFermer?
         </div>
       </div>
 
-      <EtatGeneral compteurs={compteurs} />
 
       <div className="border-line border-t px-5 py-3 md:px-2 xl:px-5">
         <div className="flex items-center justify-between gap-1 max-md:justify-start md:flex-col md:gap-1.5 xl:flex-row xl:justify-between">
@@ -276,39 +275,6 @@ function BoutonTheme() {
   );
 }
 
-/** Le pied du rail : l'inventaire, toujours visible. */
-function EtatGeneral({ compteurs }: { compteurs: Compteurs }) {
-  const lignes: { l: string; n: number | null; mal: boolean }[] = [
-    { l: 'Ressources', n: compteurs.ressources, mal: false },
-    { l: 'Liens cassés', n: compteurs.liensCasses, mal: compteurs.liensCasses > 0 },
-    { l: 'À revérifier', n: compteurs.aReverifier, mal: compteurs.aReverifier > 0 },
-    { l: 'Médicaments', n: compteurs.produits, mal: false },
-  ];
-
-  return (
-    <div className="border-line border-t px-5 py-4 md:hidden xl:block">
-      <p className="etiquette mb-2">État</p>
-      <dl className="flex flex-col gap-1">
-        {lignes.map(
-          (ligne) =>
-            ligne.n !== null && (
-              <div key={ligne.l} className="flex items-baseline justify-between gap-3">
-                <dt className="text-ink-2 text-[14px]">{ligne.l}</dt>
-                <dd className={cn('donnee text-[16px] font-semibold', ligne.mal && 'text-critical-text')}>
-                  {ligne.n}
-                </dd>
-              </div>
-            ),
-        )}
-      </dl>
-      {compteurs.liensCasses > 0 && (
-        <p className="text-critical-text mt-2 text-[12.5px] leading-snug">
-          {compteurs.liensCasses} lien{compteurs.liensCasses > 1 ? 's' : ''} à revérifier
-        </p>
-      )}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------------- */
 

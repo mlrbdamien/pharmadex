@@ -19,7 +19,7 @@ export type TypeResultat = 'produit' | 'fiche' | 'ressource' | 'note';
 
 export const LIBELLES_TYPE: Record<TypeResultat, string> = {
   produit: 'Médicament',
-  fiche: 'Aide-mémoire',
+  fiche: 'Sémaphore',
   ressource: 'Ressource',
   note: 'Note',
 };

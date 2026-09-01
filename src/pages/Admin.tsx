@@ -359,7 +359,7 @@ function PanneauDonnees() {
       <Card>
         <CardHeader icon={BookOpen} title="Contenu maison" />
         <dl className="flex flex-col gap-1.5">
-          <Ligne terme="Fiches de l’aide-mémoire" valeur={etat.fiches} />
+          <Ligne terme="Fiches de au Sémaphore" valeur={etat.fiches} />
         </dl>
         <p className="text-ink-3 mt-3 text-[12.5px] leading-relaxed">
           Le catalogue Swissmedic se reconstruit tout seul chaque mois. Le contenu
