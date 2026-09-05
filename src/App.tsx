@@ -1,9 +1,11 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './lib/auth';
 import { StoreProvider } from './lib/store';
+import { ecranDeconnecte } from './lib/entree';
 import { CoquilleLayout } from './components/Coquille';
 import { Login } from './pages/Login';
+import { Vitrine } from './pages/Vitrine';
 import { Home } from './pages/Home';
 import { Medicaments } from './pages/Medicaments';
 import { Dispensation } from './pages/Dispensation';
@@ -25,6 +27,7 @@ function EditorsOnly({ children }: { children: React.ReactElement }) {
 
 function Gate() {
   const { status, email, signOut } = useAuth();
+  const { pathname } = useLocation();
 
   if (status === 'loading') {
     return (
@@ -34,7 +37,11 @@ function Gate() {
     );
   }
 
-  if (status === 'signed-out') return <Login />;
+  // Déconnecté : la vitrine publique ou le formulaire, selon l'adresse. Le
+  // choix vit dans src/lib/entree.ts ; ici on ne fait que rendre.
+  if (status === 'signed-out') {
+    return ecranDeconnecte(pathname) === 'vitrine' ? <Vitrine /> : <Login />;
+  }
 
   if (status === 'denied') {
     return (

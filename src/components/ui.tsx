@@ -47,3 +47,28 @@ export function CardHeader({
     </div>
   );
 }
+
+/**
+ * La marque : le « + » du favicon, dans un carré d'accent. Un seul dessin
+ * pour l'onglet, la connexion et la vitrine — la taille se passe en classes
+ * (`size-7 rounded-[7px]` par défaut).
+ */
+export function Marque({ className = 'size-7 rounded-[7px]' }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn('bg-accent text-on-accent inline-flex shrink-0 items-center justify-center', className)}
+    >
+      <svg
+        viewBox="0 0 32 32"
+        className="h-[58%] w-[58%]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={5}
+        strokeLinecap="round"
+      >
+        <path d="M16 8v16M8 16h16" />
+      </svg>
+    </span>
+  );
+}

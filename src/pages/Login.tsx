@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Marque } from '../components/ui';
 
 /**
  * Les messages de Supabase sont en anglais et techniques. Au comptoir, un
@@ -57,7 +59,10 @@ export function Login() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold text-ink">Pharmadex</h1>
+      <h1 className="text-ink flex items-center gap-2.5 text-2xl font-semibold">
+        <Marque />
+        Pharmadex
+      </h1>
 
       <form onSubmit={submit} className="mt-8 space-y-3">
         <div>
@@ -103,6 +108,16 @@ export function Login() {
           Se connecter
         </button>
       </form>
+
+      {/* Un visiteur arrivé ici par un lien partagé peut vouloir savoir ce
+          qu'est l'outil avant d'avoir un compte : la vitrine est à un clic. */}
+      <Link
+        to="/"
+        className="text-ink-3 hover:text-ink mt-8 inline-flex items-center gap-1.5 self-start text-sm"
+      >
+        <ArrowLeft className="size-3.5" aria-hidden />
+        Présentation de l'outil
+      </Link>
     </main>
   );
 }

@@ -334,6 +334,28 @@ sémantiques distinctes.
   ce serait fermer la porte de l'intérieur, la seule action irréversible
   depuis cet écran.
 
+## Vitrine (05.09.2026)
+
+- `src/pages/Vitrine.tsx` est ce que voit un visiteur déconnecté sur `/` :
+  présentation publique de l'outil, bouton « Se connecter » vers `/connexion`
+  (route qui n'existe que déconnecté — connecté, `*` renvoie à l'accueil).
+  **Tout autre chemin déconnecté affiche directement le formulaire, adresse
+  conservée** — décision de Damien : un lien `/f/toux` reçu d'une collègue
+  s'ouvre sitôt connecté, sans passer par la vitrine. La règle est la fonction
+  pure `ecranDeconnecte` de `src/lib/entree.ts` ; le `Gate` d'App.tsx ne
+  navigue jamais, il change seulement ce qu'il rend.
+- La vitrine n'a accès à aucune donnée (aucune policy `anon`, ne pas en
+  ouvrir pour elle), n'affiche aucun chiffre vivant — un compteur figé dans
+  la copie finit par mentir — et ne se voit jamais au comptoir, dont le
+  compte partagé reste connecté. Mêmes tokens que la console, mise en page
+  plus aérée, mobile vérifié. Les cartes « Fonctions » suivent l'ordre et
+  les icônes du rail : ce que la vitrine promet, la console le montre au
+  même endroit.
+- `index.html` garde `noindex` : la vitrine n'est pas indexée tant que Damien
+  ne le demande pas. Pas de formulaire de demande d'accès ni d'adresse
+  e-mail publiée (aucune dépendance SMTP) : le texte renvoie au responsable
+  de l'outil. L'officine n'est pas nommée.
+
 ## Hors périmètre — ne pas construire sans demande explicite
 
 - Recherche plein texte DANS les notices (elles restent chez Refdata).
