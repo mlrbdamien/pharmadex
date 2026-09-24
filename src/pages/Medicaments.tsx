@@ -10,15 +10,16 @@ import { enfantsDe, LIBELLES_ATC, tousLesCodesAtc } from '../lib/atc';
 import { fold } from '../lib/resources';
 import { cn } from '../components/ui';
 import type { ProductRow } from '../lib/types';
+import { categorie, LETTRES_FILTRE, valeursFiltre } from '../lib/categories';
+import { routeProduit } from '../lib/products';
+
+/** Une ligne du catalogue : l'autorisation et ses dosages, en puces. */
+type LigneCatalogue = ProductRow & {
+  dosages: { dosage_nr: string; label: string | null; name: string; name_fr: string | null; delisted: boolean }[];
+};
 
 const PAGE = 50;
 
-const CATEGORIES_REMISE: Record<string, string> = {
-  A: 'A — ordonnance non renouvelable',
-  B: 'B — sur ordonnance',
-  D: 'D — conseil spécialisé',
-  E: 'E — vente libre',
-};
 
 
 /**
@@ -54,7 +55,7 @@ export function Medicaments() {
   const setPages = (n: number) => poser({ p: n > 1 ? String(n) : null });
 
   const [enfants, setEnfants] = useState<{ code: string; n: number }[]>([]);
-  const [rows, setRows] = useState<ProductRow[]>([]);
+  const [rows, setRows] = useState<LigneCatalogue[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [chargement, setChargement] = useState(true);
   const requestId = useRef(0);
@@ -67,23 +68,32 @@ export function Medicaments() {
     const timer = setTimeout(async () => {
       let query = supabase
         .from('products')
-        .select('*', { count: 'exact' })
+        // Les dosages viennent avec, par la clé étrangère : une ligne par
+        // médicament, ses dosages en puces — Iscador n'occupe pas 23 lignes.
+        .select('*, dosages(dosage_nr,label,name,name_fr,delisted)', { count: 'exact' })
         .order('name_fr', { nullsFirst: false })
         .limit(pages * PAGE);
       if (atcPrefix) query = query.like('atc_code', `${atcPrefix}%`);
-      if (cat) query = query.eq('category', cat);
+      if (cat) query = query.in('category', valeursFiltre(cat));
       // Un groupe or() PAR MOT : les groupes se cumulent en ET, donc chaque
       // mot tapé doit apparaître quelque part — « ib sandoz » trouve
       // Ibuprofen Sandoz. L'affinage insensible aux accents reste local.
       for (const mot of filtre.trim().split(/\s+/).filter(Boolean)) {
         const m = mot.replace(/[%,().]/g, '');
         if (m) {
-          query = query.or(`name_fr.ilike.%${m}%,name.ilike.%${m}%,substances.ilike.%${m}%`);
+          query = query.or(
+            `name_fr.ilike.%${m}%,name.ilike.%${m}%,substances.ilike.%${m}%,noms_dosages.ilike.%${m}%`,
+          );
         }
       }
       const { data, count } = await query;
       if (id !== requestId.current) return;
-      setRows(data ?? []);
+      setRows(((data ?? []) as unknown as LigneCatalogue[]).map((ligne) => ({
+        ...ligne,
+        // Ordre officiel des dosages : 80, 150, 300, 600 mg — pas l'ordre
+        // alphabétique, qui mettrait 150 avant 80.
+        dosages: [...(ligne.dosages ?? [])].sort((a, b) => Number(a.dosage_nr) - Number(b.dosage_nr)),
+      })));
       setTotal(count);
       setChargement(false);
     }, 200);
@@ -108,7 +118,9 @@ export function Medicaments() {
     if (!needle) return rows;
     const mots = needle.split(/\s+/).filter(Boolean);
     return rows.filter((p) => {
-      const meule = fold(`${p.name_fr ?? ''} ${p.name} ${p.substances ?? ''}`);
+      // Les noms des dosages en font partie : on tape « dafalgan 80 », pas
+      // « dafalgan, suppositoires ».
+      const meule = fold(`${p.name_fr ?? ''} ${p.name} ${p.substances ?? ''} ${p.noms_dosages ?? ''}`);
       return mots.every((mot) => meule.includes(mot));
     });
   }, [rows, filtre]);
@@ -191,13 +203,13 @@ export function Medicaments() {
           {/* Catégorie de remise */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-ink-3 text-[12px]">Remise :</span>
-            {(['A', 'B', 'D', 'E'] as const).map((lettre) => (
+            {LETTRES_FILTRE.map((lettre) => (
               <button
                 key={lettre}
                 type="button"
                 aria-pressed={cat === lettre}
                 onClick={() => setCat(cat === lettre ? null : lettre)}
-                title={CATEGORIES_REMISE[lettre]}
+                title={categorie(lettre)?.libelle}
                 className={cn(
                   'donnee cursor-pointer rounded-full border px-2.5 py-0.5 text-[13px] font-semibold transition-colors',
                   cat === lettre
@@ -220,15 +232,40 @@ export function Medicaments() {
             <>
               <div className="border-line bg-surface-1 shadow-card mt-4 rounded-card border">
                 {visibles.map((product) => (
-                  <Link
+                  <div
                     key={product.authorization_nr}
-                    to={`/p/${product.authorization_nr}`}
                     className="border-line hover:bg-surface-2 flex items-center gap-3 border-b px-4 py-2.5
                                last:border-0"
                   >
                     <Pill size={15} className="text-accent shrink-0" aria-hidden />
-                    <span className="text-ink min-w-0 flex-1 truncate text-[15px]">
-                      {libelleFr(product)}
+                    <span className="min-w-0 flex-1">
+                      <Link
+                        to={`/p/${product.authorization_nr}`}
+                        className="text-ink block truncate text-[15px] hover:underline"
+                      >
+                        {libelleFr(product)}
+                      </Link>
+                      {/* Les dosages : chacun ouvre la fiche sur LUI. Un lien par
+                          puce plutôt qu'un lien englobant — deux liens ne
+                          s'imbriquent pas. */}
+                      {product.dosages.length > 1 && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {product.dosages.map((d) => (
+                            <Link
+                              key={d.dosage_nr}
+                              to={routeProduit(product.authorization_nr, d.dosage_nr)}
+                              title={d.name_fr || d.name}
+                              className={cn(
+                                'donnee border-line bg-surface-1 text-ink-2 hover:border-accent hover:text-accent',
+                                'rounded-full border px-2 py-px text-[11.5px] transition-colors',
+                                d.delisted && 'line-through opacity-60',
+                              )}
+                            >
+                              {d.label || d.name_fr || d.name}
+                            </Link>
+                          ))}
+                        </span>
+                      )}
                     </span>
                     {estAnnote(notesIndex, product.authorization_nr, product.atc_code, product.substances) && (
                       <StickyNote className="text-warning size-3.5 shrink-0" aria-label="Note maison" />
@@ -247,7 +284,7 @@ export function Medicaments() {
                     {product.atc_code && (
                       <span className="donnee text-ink-3 shrink-0 text-[12.5px]">{product.atc_code}</span>
                     )}
-                  </Link>
+                  </div>
                 ))}
               </div>
               {total !== null && rows.length < total && (

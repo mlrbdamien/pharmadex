@@ -3,8 +3,8 @@ import type { EntreeFiche } from './fiches';
 import { LIBELLES_VOLET } from './fiches';
 import type { ProductNote } from './notes';
 import { TYPES_NOTES } from './notes';
-import { libelleFr } from './products';
-import type { ProductRow, Resource } from './types';
+import { routeProduit } from './products';
+import type { DosageHit, Resource } from './types';
 
 /**
  * La recherche unique du comptoir.
@@ -34,6 +34,13 @@ export type Resultat = {
   badge: string | null;
   score: number;
   annote?: boolean;
+  /**
+   * Rang dans la réponse de la RPC, pour départager deux dosages de même
+   * score : Postgres les renvoie dans l'ordre officiel (80, 150, 300, 600 mg).
+   * Départager par le titre les remettait dans l'ordre alphabétique — 150,
+   * 300, 600, 80.
+   */
+  rang?: number;
 };
 
 /**
@@ -76,17 +83,18 @@ function qualite(titre: string, secondaire: string, requete: string, mots: strin
 }
 
 export type Sources = {
-  produits: ProductRow[];
+  /** Une ligne par DOSAGE : « Dafalgan 300, supp 300 mg ». */
+  dosages: DosageHit[];
   fiches: EntreeFiche[];
   ressources: Resource[];
   notes: ProductNote[];
-  /** Marque un produit annoté, pour l'afficher dans la liste. */
-  estAnnote?: (p: ProductRow) => boolean;
+  /** Marque un dosage annoté, pour l'afficher dans la liste. */
+  estAnnote?: (d: DosageHit) => boolean;
 };
 
 /**
- * Fusionne et classe. Les produits arrivent déjà filtrés par Postgres (la
- * RPC fait le travail de préfixe sur 6 300 lignes) ; fiches, ressources et
+ * Fusionne et classe. Les dosages arrivent déjà filtrés par Postgres (la
+ * RPC fait le travail de préfixe sur 10 300 lignes) ; fiches, ressources et
  * notes sont filtrées ici, sur des tables tenues en mémoire.
  */
 export function rechercher(requete: string, sources: Sources, limite = 40): Resultat[] {
@@ -99,22 +107,24 @@ export function rechercher(requete: string, sources: Sources, limite = 40): Resu
     if (brut > 0) sortie.push({ ...base, score: brut + POIDS[base.type] });
   };
 
-  for (const p of sources.produits) {
-    const nom = libelleFr(p);
+  sources.dosages.forEach((d, rang) => {
     ajouter(
       {
         type: 'produit',
-        cle: `p${p.authorization_nr}`,
-        vers: `/p/${p.authorization_nr}`,
-        titre: nom,
-        sous: p.substances,
-        badge: p.atc_code,
-        annote: sources.estAnnote?.(p),
+        rang,
+        // Une clé par DOSAGE : plusieurs dosages partagent une autorisation,
+        // et deux lignes à la même clé se confondraient dans la liste.
+        cle: `p${d.authorization_nr}-${d.dosage_nr ?? ''}`,
+        vers: routeProduit(d.authorization_nr, d.dosage_nr),
+        titre: d.name,
+        sous: d.substances,
+        badge: d.atc_code,
+        annote: sources.estAnnote?.(d),
       },
       // La RPC n'a renvoyé que des correspondances : le plancher est MOTS.
-      Math.max(MOTS, qualite(nom, p.substances ?? '', q, mots)),
+      Math.max(MOTS, qualite(d.name, `${d.product_name} ${d.substances ?? ''}`, q, mots)),
     );
-  }
+  });
 
   for (const f of sources.fiches) {
     ajouter(
@@ -150,10 +160,12 @@ export function rechercher(requete: string, sources: Sources, limite = 40): Resu
       {
         type: 'note',
         cle: `n${n.id}`,
+        // Une note précisée sur un dosage ouvre la fiche SUR ce dosage : ouverte
+        // sur l'autorisation, la posologie du 80 mg s'y lirait sans son dosage.
         vers: n.fiche_id
           ? `/f/${n.fiche_id}`
           : n.authorization_nr
-            ? `/p/${n.authorization_nr}`
+            ? routeProduit(n.authorization_nr, n.dosage_nr)
             : '/notes',
         titre: n.body.split('\n')[0].slice(0, 90),
         sous: cible,
@@ -164,6 +176,11 @@ export function rechercher(requete: string, sources: Sources, limite = 40): Resu
   }
 
   return sortie
-    .sort((a, b) => b.score - a.score || a.titre.localeCompare(b.titre))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.rang !== undefined && b.rang !== undefined ? a.rang - b.rang : 0) ||
+        a.titre.localeCompare(b.titre),
+    )
     .slice(0, limite);
 }

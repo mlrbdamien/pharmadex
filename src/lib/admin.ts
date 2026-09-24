@@ -77,12 +77,19 @@ export async function lireJournal(limite = 100): Promise<LigneJournal[]> {
 
 export type EtatDonnees = {
   produits: number | null;
+  /** Dosages : le niveau que le comptoir identifie (Dafalgan supp 300 mg). */
+  dosages: number | null;
   emballages: number | null;
   notices: number | null;
   fiches: number | null;
   /** Date du dernier import Swissmedic — la fraîcheur du catalogue. */
   importLe: string | null;
-  /** Nombre de produits portant un nom français officiel. */
+  /**
+   * Dosages portant une dénomination française officielle (Refdata ou OFSP).
+   * Comptés sur les DOSAGES : c'est là que vivent les noms depuis 0015. Le
+   * même compte sur les autorisations chuterait mécaniquement — le libellé
+   * commun n'est officiel que si TOUS les dosages le sont.
+   */
   nomsFr: number | null;
 };
 
@@ -92,12 +99,13 @@ export type EtatDonnees = {
  */
 export async function lireEtatDonnees(): Promise<EtatDonnees> {
   const tete = { count: 'exact' as const, head: true };
-  const [produits, emballages, notices, fiches, nomsFr, dernier] = await Promise.all([
+  const [produits, dosages, emballages, notices, fiches, nomsFr, dernier] = await Promise.all([
     supabase.from('products').select('*', tete),
+    supabase.from('dosages').select('*', tete),
     supabase.from('packages').select('*', tete),
     supabase.from('notices').select('*', tete),
     supabase.from('fiches').select('*', tete),
-    supabase.from('products').select('*', tete).not('name_fr', 'is', null),
+    supabase.from('dosages').select('*', tete).not('name_fr', 'is', null),
     supabase
       .from('products')
       .select('imported_at')
@@ -108,6 +116,7 @@ export async function lireEtatDonnees(): Promise<EtatDonnees> {
 
   return {
     produits: produits.count,
+    dosages: dosages.count,
     emballages: emballages.count,
     notices: notices.count,
     fiches: fiches.count,

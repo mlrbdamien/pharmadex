@@ -16,6 +16,7 @@ import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
+import { routeProduit } from '../lib/products';
 import { isStaleDate } from '../lib/resources';
 import { formatDate, todayISO } from '../lib/format';
 import {
@@ -38,6 +39,7 @@ export function Notes() {
   const ouvrirMenu = useMenu();
   const [notes, setNotes] = useState<ProductNote[]>([]);
   const [noms, setNoms] = useState<Map<string, string>>(new Map());
+  const [nomsDosages, setNomsDosages] = useState<Map<string, string>>(new Map());
   const [type, setType] = useState<NoteType | null>(null);
   const [chargement, setChargement] = useState(true);
   const [copiee, setCopiee] = useState<string | null>(null);
@@ -52,6 +54,20 @@ export function Notes() {
         .select('authorization_nr,name,name_fr')
         .in('authorization_nr', auths);
       setNoms(new Map((data ?? []).map((p) => [p.authorization_nr, p.name_fr || p.name])));
+      // Une note précisée sur un dosage se nomme par LUI : « Dafalgan 300,
+      // supp 300 mg », pas par le tronc de l'autorisation.
+      const dosages = rows.filter((n) => n.authorization_nr && n.dosage_nr);
+      if (dosages.length > 0) {
+        const { data: lignes } = await supabase
+          .from('dosages')
+          .select('authorization_nr,dosage_nr,name,name_fr')
+          .in('authorization_nr', [...new Set(dosages.map((n) => n.authorization_nr!))]);
+        setNomsDosages(
+          new Map(
+            (lignes ?? []).map((d) => [`${d.authorization_nr}/${d.dosage_nr}`, d.name_fr || d.name]),
+          ),
+        );
+      }
     }
     setChargement(false);
   }, []);
@@ -135,12 +151,15 @@ export function Notes() {
                           </span>
                           {note.authorization_nr ? (
                             <Link
-                              to={`/p/${note.authorization_nr}`}
+                              to={routeProduit(note.authorization_nr, note.dosage_nr)}
                               className="text-ink hover:text-accent inline-flex min-w-0 items-center
                                          gap-1 truncate text-[14px] font-medium hover:underline"
                             >
                               <Pill size={13} className="text-accent shrink-0" />
-                              {noms.get(note.authorization_nr) ?? note.authorization_nr}
+                              {(note.dosage_nr &&
+                                nomsDosages.get(`${note.authorization_nr}/${note.dosage_nr}`)) ||
+                                noms.get(note.authorization_nr) ||
+                                note.authorization_nr}
                             </Link>
                           ) : note.atc_prefix ? (
                             <span className="donnee bg-accent-soft text-accent rounded px-1.5 py-0.5 text-[12px]">

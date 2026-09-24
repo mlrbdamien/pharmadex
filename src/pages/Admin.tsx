@@ -18,7 +18,7 @@ import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { isStale, STALE_MONTHS } from '../lib/resources';
 import { deleteMiss, listMisses } from '../lib/misses';
-import { resolveCodes } from '../lib/products';
+import { normalizeScannedCode, resolveCodes, routeProduit } from '../lib/products';
 import type { SearchMiss } from '../lib/types';
 import {
   ajouterAcces,
@@ -336,14 +336,15 @@ function PanneauDonnees() {
       <Card>
         <CardHeader icon={Database} title="Catalogue Swissmedic" />
         <dl className="flex flex-col gap-1.5">
-          <Ligne terme="Médicaments" valeur={etat.produits} />
+          <Ligne terme="Médicaments (autorisations)" valeur={etat.produits} />
+          <Ligne terme="Dosages" valeur={etat.dosages} />
           <Ligne terme="Emballages" valeur={etat.emballages} />
           <Ligne terme="Notices indexées" valeur={etat.notices} />
           <Ligne
-            terme="Noms français officiels"
+            terme="Dosages au nom français officiel"
             valeur={
-              etat.nomsFr !== null && etat.produits
-                ? `${etat.nomsFr} · ${Math.round((etat.nomsFr / etat.produits) * 100)} %`
+              etat.nomsFr !== null && etat.dosages
+                ? `${etat.nomsFr} · ${Math.round((etat.nomsFr / etat.dosages) * 100)} %`
                 : etat.nomsFr
             }
           />
@@ -501,7 +502,7 @@ function PanneauQualite() {
                   )}
                   {noms.has(m.term) && (
                     <Link
-                      to={`/p/${noms.get(m.term)!.nr}`}
+                      to={routeProduit(noms.get(m.term)!.nr, null, normalizeScannedCode(m.term))}
                       className="text-accent ml-2 font-normal hover:underline"
                     >
                       {noms.get(m.term)!.name}

@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth';
 import { useStore } from '../lib/store';
 import { logSearchMiss, shouldLogMiss } from '../lib/resources';
 import { useRecherche, useSelection } from '../lib/useRecherche';
+import { normalizeScannedCode, routeProduit } from '../lib/products';
 import type { Resultat } from '../lib/recherche';
 import type { Resource } from '../lib/types';
 
@@ -38,9 +39,14 @@ export function Home() {
   const { selection, setSelection, surTouche } = useSelection(resultats.length, q);
 
   // Un scan reconnu ouvre la fiche : le code-barre ne demande pas d'arbitrage.
+  // Le dosage et l'emballage voyagent avec : un scan de Dafalgan 300 ouvre la
+  // fiche sur le 300 mg, la boîte en main surlignée — pas sur le premier dosage.
   useEffect(() => {
-    if (scan) navigate(`/p/${scan.product.authorization_nr}`);
-  }, [scan, navigate]);
+    if (scan)
+      navigate(
+        routeProduit(scan.product.authorization_nr, scan.product.dosage_nr, normalizeScannedCode(q)),
+      );
+  }, [scan, navigate, q]);
 
   /**
    * Journal des recherches vides. Deux conditions : la réponse serveur est

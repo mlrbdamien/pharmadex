@@ -46,7 +46,11 @@ URL = "https://api.refdata.ch/articles/2.0/Refdata.Articles.zip"
 # pas afficher la contenance d'un conditionnement parmi d'autres.
 EMBALLAGE_FINAL = re.compile(
     r"\s+\d+(?:[.,]\d+)?\s*(?:x\s*\d+(?:[.,]\d+)?\s*)*"
-    r"(?:pce|pz|stk|ml|l|g|mg|dose[s]?|amp|fl|ser|sach|cpr|caps|susp|inh)\.?\s*$",
+    # Pas de « mg » : un milligramme est un DOSAGE, presque jamais une
+    # contenance. L'avoir ici effaçait « 400 mg » des noms qui finissent par
+    # leur dose — sans gravité tant qu'on nommait l'autorisation, fatal dès
+    # qu'on nomme chaque dosage : deux dosages porteraient le même nom.
+    r"(?:pce|pz|stk|ml|l|g|dose[s]?|amp|fl|ser|sach|cpr|caps|susp|inh)\.?\s*$",
     re.I)
 
 

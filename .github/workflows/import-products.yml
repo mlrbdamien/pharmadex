@@ -23,6 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           pip install --quiet openpyxl
+          python3 scripts/libelles.py
           python3 scripts/import_products.py --out-dir /tmp/import
           wc -l /tmp/import/*.csv
 
@@ -46,6 +47,12 @@ jobs:
           python3 scripts/import_sl.py --out-dir /tmp/import
           wc -l /tmp/import/sl_fr.csv
 
+      - name: Rattacher les dénominations françaises aux dosages
+        run: |
+          set -euo pipefail
+          python3 scripts/noms_fr.py --test
+          python3 scripts/noms_fr.py --dir /tmp/import
+
       - name: Upsert vers Postgres
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -54,83 +61,85 @@ jobs:
           docker run --rm -i -v /tmp/import:/import postgres:17-alpine \
             psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL' | tee /tmp/result.txt
           begin;
-          create temp table staging_products (like public.products including defaults);
-          create temp table staging_packages (like public.packages);
-          \copy staging_products (authorization_nr, name, company, atc_code, substances, category) from '/import/products.csv' with (format csv, header true)
-          \copy staging_packages (gtin, authorization_nr, pack_code, description) from '/import/packages.csv' with (format csv, header true)
+          -- Trois niveaux, dans l'ordre des clés étrangères : autorisation,
+          -- dosage, emballage. Les noms français sont déjà rattachés à chaque
+          -- dosage par scripts/noms_fr.py ; le SQL ne choisit plus aucun nom.
+          create temp table staging_products (authorization_nr text, name text, name_fr text,
+            fr_source text, company text, atc_code text, substances text, category text,
+            noms_dosages text);
+          create temp table staging_dosages (authorization_nr text, dosage_nr text, name text,
+            name_fr text, fr_source text, label text, substances text, category text);
+          create temp table staging_packages (gtin text, authorization_nr text, dosage_nr text,
+            pack_code text, description text, category text);
+          \copy staging_products from '/import/products.csv' with (format csv, header true)
+          \copy staging_dosages  from '/import/dosages.csv'  with (format csv, header true)
+          \copy staging_packages from '/import/packages.csv' with (format csv, header true)
 
           -- Upsert sans suppression : un produit retiré du marché reste
           -- scannable tant que des boîtes circulent.
-          insert into public.products (authorization_nr, name, company, atc_code, substances, category)
-          select authorization_nr, name, nullif(company,''), nullif(atc_code,''),
-                 nullif(substances,''), nullif(category,'')
+          -- Garde-fou AVANT toute écriture : les noms français sont désormais
+          -- écrits sans condition par l'upsert. Un fichier Refdata vide (fichier
+          -- renommé dans l'archive, espace de noms XML changé) les effacerait
+          -- tous en silence, run au vert. Refdata nomme ~80 % des emballages.
+          do $$
+          declare nd int; nr int;
+          begin
+            select count(*), count(*) filter (where fr_source = 'refdata')
+              into nd, nr from staging_dosages;
+            if nr < 3000 then
+              raise exception 'Refdata ne nomme que % dosages sur % — source suspecte, import refusé', nr, nd;
+            end if;
+          end $$;
+
+          insert into public.products (authorization_nr, name, name_fr, fr_source, company,
+                                       atc_code, substances, category, noms_dosages)
+          select authorization_nr, name, nullif(name_fr,''), nullif(fr_source,''),
+                 nullif(company,''), nullif(atc_code,''), nullif(substances,''), nullif(category,''),
+                 nullif(noms_dosages,'')
             from staging_products
           on conflict (authorization_nr) do update
-            set name = excluded.name, company = excluded.company,
-                atc_code = excluded.atc_code, substances = excluded.substances,
+            set name = excluded.name, name_fr = excluded.name_fr, fr_source = excluded.fr_source,
+                company = excluded.company, atc_code = excluded.atc_code,
+                substances = excluded.substances, category = excluded.category,
+                noms_dosages = excluded.noms_dosages, imported_at = now();
+
+          insert into public.dosages (authorization_nr, dosage_nr, name, name_fr, fr_source,
+                                      label, substances, category)
+          select authorization_nr, dosage_nr, name, nullif(name_fr,''), nullif(fr_source,''),
+                 nullif(label,''), nullif(substances,''), nullif(category,'')
+            from staging_dosages
+          on conflict (authorization_nr, dosage_nr) do update
+            set name = excluded.name, name_fr = excluded.name_fr, fr_source = excluded.fr_source,
+                label = excluded.label, substances = excluded.substances,
                 category = excluded.category, imported_at = now();
 
-          insert into public.packages (gtin, authorization_nr, pack_code, description)
-          select gtin, authorization_nr, pack_code, nullif(description,'')
+          insert into public.packages (gtin, authorization_nr, dosage_nr, pack_code, description, category)
+          select gtin, authorization_nr, dosage_nr, pack_code, nullif(description,''), nullif(category,'')
             from staging_packages
           on conflict (gtin) do update
-            set authorization_nr = excluded.authorization_nr,
-                pack_code = excluded.pack_code, description = excluded.description;
+            set authorization_nr = excluded.authorization_nr, dosage_nr = excluded.dosage_nr,
+                pack_code = excluded.pack_code, description = excluded.description,
+                category = excluded.category;
 
-          -- Refdata d'abord : dénominations officielles, 79 % des emballages.
+          -- Descriptions et prix d'emballage : Refdata d'abord, l'OFSP ensuite.
           create temp table staging_rd (gtin text, name_fr text,
                                         description_fr text, price_public text);
           \copy staging_rd from '/import/refdata_fr.csv' with (format csv, header true)
-
           update public.packages k
              set description_fr = r.description_fr,
                  price_public   = nullif(r.price_public, '')::numeric
             from staging_rd r
            where k.gtin = r.gtin;
 
-          -- Nom de produit : le plus court parmi ses emballages, comme pour la
-          -- liste Swissmedic — celui qui porte le moins de variations.
-          update public.products p
-             set name_fr   = c.name_fr,
-                 fr_source = 'refdata'
-            from (
-              select distinct on (k.authorization_nr)
-                     k.authorization_nr, r.name_fr
-                from staging_rd r
-                join public.packages k on k.gtin = r.gtin
-               order by k.authorization_nr, length(r.name_fr), r.name_fr
-            ) c
-           where p.authorization_nr = c.authorization_nr;
-
           create temp table staging_sl (gtin text, name_fr text,
                                         description_fr text, price_public text);
           \copy staging_sl from '/import/sl_fr.csv' with (format csv, header true)
-
-          -- Dénomination française officielle : elle prime sur la traduction
-          -- par table. La priorité 'refdata' > 'sl' > 'table' est portée par
-          -- fr_source ; on n'écrase jamais une donnée Refdata par une donnée SL.
           update public.packages k
              set description_fr = coalesce(k.description_fr, s.description_fr),
                  price_public   = coalesce(k.price_public,
                                            nullif(s.price_public, '')::numeric)
             from staging_sl s
            where k.gtin = s.gtin;
-
-          -- distinct on + plus court : un produit a plusieurs emballages SL
-          -- (un par dosage) — sans tri déterministe, le nom retenu changerait
-          -- au hasard d'un import à l'autre.
-          update public.products p
-             set name_fr   = c.name_fr,
-                 fr_source = 'sl'
-            from (
-              select distinct on (k.authorization_nr)
-                     k.authorization_nr, s.name_fr
-                from staging_sl s
-                join public.packages k on k.gtin = s.gtin
-               order by k.authorization_nr, length(s.name_fr), s.name_fr
-            ) c
-           where p.authorization_nr = c.authorization_nr
-             and coalesce(p.fr_source, '') <> 'refdata';
 
           create temp table staging_notices (like public.notices);
           \copy staging_notices from '/import/notices.csv' with (format csv, header true)
@@ -148,14 +157,15 @@ jobs:
           -- JAMAIS déclencher une purge massive — on préfère échouer.
           -- ------------------------------------------------------------------
           do $$
-          declare np int; nk int; nn int;
+          declare np int; nd int; nk int; nn int;
           begin
             select count(*) into np from staging_products;
+            select count(*) into nd from staging_dosages;
             select count(*) into nk from staging_packages;
             select count(*) into nn from staging_notices;
-            if np < 5000 or nk < 12000 or nn < 20000 then
-              raise exception 'source suspecte (produits=%, emballages=%, notices=%) — purge refusée',
-                np, nk, nn;
+            if np < 5000 or nd < 8000 or nk < 12000 or nn < 20000 then
+              raise exception 'source suspecte (produits=%, dosages=%, emballages=%, notices=%) — purge refusée',
+                np, nd, nk, nn;
             end if;
           end $$;
 
@@ -165,6 +175,11 @@ jobs:
              set delisted = not exists (
                    select 1 from staging_products s
                     where s.authorization_nr = p.authorization_nr);
+          update public.dosages d
+             set delisted = not exists (
+                   select 1 from staging_dosages s
+                    where s.authorization_nr = d.authorization_nr
+                      and s.dosage_nr = d.dosage_nr);
 
           -- Emballages et notices : purge des lignes disparues de la source.
           delete from public.packages k
@@ -178,12 +193,13 @@ jobs:
 
           select count(*) as produits_total from public.products;
           select count(*) as produits_retires from public.products where delisted;
+          select count(*) as dosages_total from public.dosages;
           select count(*) as emballages_total from public.packages;
           select count(*) as notices_total from public.notices;
           select count(*) as noms_francais_officiels from public.products where name_fr is not null;
           select count(*) as prix_publics from public.packages where price_public is not null;
-          select fr_source, count(*) from public.products
-           where name_fr is not null group by fr_source order by 2 desc;
+          select fr_source as source_nom_dosage, count(*) from public.dosages
+           group by fr_source order by 2 desc;
           SQL
 
       - name: Résumé

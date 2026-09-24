@@ -317,12 +317,30 @@ def _traduire_mots(texte: str) -> str:
     return texte
 
 
+# Un dosage en fin de nom : « Suppositorien 80 mg », « Lösung 10 mg/ml ».
+# Chez un DOSAGE Swissmedic, la forme n'est pas le dernier mot — le dosage la
+# suit. Il faut le mettre de côté pour que la table des formes la reconnaisse.
+_DOSAGE_FINAL = re.compile(
+    r"\s+(\d[\d'.,]*\s*(?:mg|g|µg|μg|mcg|ml|l|IE|I\.E\.|UI|U|%|mmol)"
+    r"(?:\s*/\s*[\d.,]*\s*[A-Za-zµμ.]+)?)$",
+    re.IGNORECASE,
+)
+
+
+def _sans_dosage(suffixe: str) -> tuple[str, str]:
+    """« Suppositorien 80 mg » → (« Suppositorien », « 80 mg »)."""
+    m = _DOSAGE_FINAL.search(suffixe)
+    if not m:
+        return suffixe, ""
+    return suffixe[: m.start()].strip(), m.group(1)
+
+
 def traduire_nom(name: str) -> str:
     """Traduit le suffixe de forme d'un nom de produit, marque intacte."""
     if "," not in name:
         return name
     marque, suffixe = name.rsplit(",", 1)
-    suffixe = suffixe.strip()
+    suffixe, dosage = _sans_dosage(suffixe.strip())
     traduit = _FORMES_FOLD.get(suffixe.lower())
     if traduit is None:
         # Repli mot à mot pour les formes composées absentes de la table.
@@ -330,14 +348,14 @@ def traduire_nom(name: str) -> str:
         for motif, remplacement in _RETOUCHES:
             traduit = motif.sub(remplacement, traduit)
         traduit = _traduire_mots(traduit)
-    return f"{marque}, {traduit}"
+    return f"{marque}, {traduit}" + (f" {dosage}" if dosage else "")
 
 
 def forme_non_traduite(name: str) -> str | None:
     """Le suffixe resté en allemand, pour le décompte du résumé d'import."""
     if "," not in name:
         return None
-    suffixe = name.rsplit(",", 1)[1].strip()
+    suffixe, _ = _sans_dosage(name.rsplit(",", 1)[1].strip())
     if suffixe.lower() in _FORMES_FOLD:
         return None
     reste = suffixe

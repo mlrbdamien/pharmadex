@@ -64,9 +64,9 @@ ouvrir » va dans le mauvais sens.
   est rédhibitoire, et le SMTP intégré de Supabase est limité à quelques envois
   par heure. Ne pas réintroduire de lien magique ni de réinitialisation par
   e-mail sans demande explicite — cela ramènerait la dépendance SMTP.
-- **`allowed_emails` n'est pas modifiable depuis l'application.** Ajouter un
-  accès = créer le compte au dashboard (avec « Auto Confirm User ») + insérer
-  une ligne en SQL (voir README).
+- **Accès** : la console `/admin` gère l'allowlist (migration 0013), mais
+  AUTORISER une adresse ne crée pas le compte — il se crée toujours au
+  dashboard Supabase (« Auto Confirm User »), les inscriptions étant fermées.
 - **Recherche** : configuration Postgres `fr_unaccent` (français + `unaccent`).
   La fonction `search_resources(q)` ajoute `:*` à chaque lexème pour trouver dès
   la frappe, avec un `ilike` en filet. Le front garde toutes les ressources en
@@ -88,8 +88,9 @@ ouvrir » va dans le mauvais sens.
   pagination) et les ressources aussi (/ressources) — pas seulement
   atteignables par la recherche.
 - Les produits sont aussi cherchables PAR NOM et par principe actif
-  (`search_products`, migration 0004) : cliquer un résultat produit ouvre la
-  même fiche qu'un scan (`product_hit`, partagé avec `scan_gtin`).
+  (`search_products`, migration 0004 — remplacée par `search_dosages` en 0015,
+  voir « Dosages ») : cliquer un résultat produit ouvre la même fiche qu'un
+  scan (`product_hit`, partagé avec `scan_gtin`).
 - Un scan ou une recherche qui identifie un produit n'est JAMAIS consigné en
   recherche vide.
 - `products`/`packages` : aucune policy d'écriture, remplies par l'import
@@ -355,6 +356,81 @@ sémantiques distinctes.
   ne le demande pas. Pas de formulaire de demande d'accès ni d'adresse
   e-mail publiée (aucune dépendance SMTP) : le texte renvoie au responsable
   de l'outil. L'officine n'est pas nommée.
+
+## Dosages (migration 0015, 24.09.2026) — TROIS NIVEAUX, JAMAIS UN
+
+Swissmedic a trois niveaux et Pharmadex les garde tous les trois :
+**autorisation** (`products` — un numéro, une notice, un code ATC),
+**dosage** (`dosages` — la « Dosisstärke » : Dafalgan supp 80, 150, 300 et
+600 mg sont quatre dosages d'UNE autorisation) et **emballage** (`packages` —
+un GTIN).
+
+- **L'erreur à ne jamais refaire.** L'import gardait une ligne par
+  autorisation et « le nom le plus court (généralement sans le dosage) ». La
+  prémisse était fausse : les noms portent le dosage, le plus court est celui
+  aux plus petits chiffres. 3 990 dosages sur 10 299 (38 %) étaient
+  introuvables, un scan de Dafalgan 300 affichait « 80 mg ». Tout ce qui
+  s'identifie au comptoir — nom, catégorie, principes actifs, emballages —
+  vit au niveau du DOSAGE.
+- **Ce qui reste à l'autorisation, parce que c'est juste** : le code ATC (il
+  ne varie JAMAIS entre dosages — vérifié, 0 cas sur 2 148), la notice AIPS,
+  les ressources et fiches du Sémaphore liées.
+- **Catégorie de remise : une par niveau, lue telle quelle.** Swissmedic
+  agrège lui-même vers le haut (« B/D » quand les niveaux inférieurs
+  diffèrent) : Perenterol 250 est en D, 500 en B, le médicament en B/D ; la
+  catégorie varie même d'un emballage à l'autre pour 39 dosages. Ne JAMAIS
+  déduire une catégorie d'une autre. Table d'affichage unique :
+  `src/lib/categories.ts` (A+ et B/D inclus — ils n'avaient aucun badge).
+- **Noms.** `scripts/import_products.py` lit la colonne « Dosisstärke-nummer »
+  et calcule le libellé commun de l'autorisation (`libelle_commun`) et la
+  puce de chaque dosage (`libelle_dosage`) — `scripts/libelles.py`, fonctions
+  pures, doctests exécutés par le workflow avant tout chargement. Les noms
+  français (Refdata > OFSP > table) se rattachent PAR GTIN au dosage, dans
+  `scripts/noms_fr.py` ; le SQL du workflow ne choisit plus aucun nom.
+- **Recherche** : `search_dosages` rend une ligne PAR DOSAGE, groupées par
+  autorisation dans l'ordre officiel (80, 150, 300, 600 — pas l'ordre
+  alphabétique). `search_products` reste en base, sans appelant, jusqu'à une
+  migration de nettoyage.
+- **Adresses** : `/p/:nr?d=<dosage>&g=<gtin>` (`routeProduit`). Le dosage
+  passe en paramètre pour que `/p/:nr` reste valide (liens partagés, notes,
+  journal) ; sans `d`, la fiche montre l'autorisation et ses dosages en puces
+  plutôt que d'en élire un. Un scan porte le dosage ET le GTIN (boîte en main
+  surlignée).
+- **Notes** : portée « ce dosage » (`product_notes.dosage_nr`, qui précise
+  `authorization_nr` sans le remplacer). Par défaut, l'éditeur propose LE
+  DOSAGE affiché : une note trop étroite manque à quelques dosages, une
+  posologie trop large (adulte étendue au suppositoire de 80 mg) blesse.
+- **Modifier une note ne touche JAMAIS à sa portée** (`updateNote` recopie les
+  champs un à un). L'éditeur passait tout son état, portée comprise, et
+  TypeScript ne le voyait pas (objet passé par variable) : une note de classe
+  ATC modifiée depuis une fiche devenait une note sur ce seul produit.
+- **Import** : dosages et produits ne sont jamais supprimés, seulement marqués
+  `delisted` — une purge emporterait les notes par cascade. Idempotence
+  vérifiée par sommes md5 sur les trois tables après deux imports. Une
+  autorisation retirée AVANT 0015 n'a aucun dosage : `search_dosages` la
+  rend quand même (ligne sans `dosage_nr`), des boîtes circulent encore.
+- **Noms français, deux garde-fous** (`scripts/noms_fr.py`) : un nom n'est
+  retenu pour un dosage que s'il porte la dose de ce dosage (`garde_la_dose`
+  — l'élagage Refdata mangeait « 400 mg » en fin de nom) ; deux dosages que
+  Swissmedic distingue ne partagent jamais un nom français (Vitamine D3
+  Streuli Prophylax en D et Therapie en B recevaient le même). Le libellé
+  d'une autorisation à plusieurs dosages n'est JAMAIS le nom entier de l'un
+  d'eux. Le workflow refuse l'import si Refdata nomme moins de 3 000 dosages :
+  les noms sont désormais écrits sans condition, un fichier Refdata vide les
+  aurait tous effacés en silence, run au vert.
+- **Portée d'une note verrouillée EN BASE** (trigger `portee_immuable`) : quel
+  que soit le client — onglet resté sur l'ancienne version, script —
+  modifier la portée d'une note est refusé. On supprime et on recrée.
+- **Filtre du catalogue** : `products.noms_dosages` (rempli par l'import) pour
+  que « dafalgan 80 » trouve l'autorisation dont le libellé est « Dafalgan,
+  suppositoires ».
+- **Mise en production d'un changement de schéma + import : jamais dans
+  l'ordre naïf.** GitHub exécute la version COMMITÉE du workflow : relancer
+  l'import avant de pousser fait tourner l'ANCIEN import sur le schéma neuf
+  — run au vert, table vide. Ordre sûr : pousser sur une BRANCHE, appliquer
+  la migration, `gh workflow run import-products.yml --ref <branche>`,
+  vérifier le résumé (dosages_total), et SEULEMENT ensuite fusionner dans
+  main (Cloudflare déploie main).
 
 ## Hors périmètre — ne pas construire sans demande explicite
 

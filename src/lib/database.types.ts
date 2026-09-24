@@ -77,6 +77,24 @@ export type Database = {
           category: string | null;
           name_fr: string | null;
           fr_source: string | null;
+          noms_dosages: string | null;
+          delisted: boolean;
+          imported_at: string;
+        };
+        Insert: never; // rempli par l'import (service_role) uniquement
+        Update: never;
+        Relationships: [];
+      };
+      dosages: {
+        Row: {
+          authorization_nr: string;
+          dosage_nr: string;
+          name: string;
+          name_fr: string | null;
+          fr_source: string | null;
+          label: string | null;
+          substances: string | null;
+          category: string | null;
           delisted: boolean;
           imported_at: string;
         };
@@ -88,6 +106,8 @@ export type Database = {
         Row: {
           gtin: string;
           authorization_nr: string;
+          dosage_nr: string | null;
+          category: string | null;
           pack_code: string;
           description: string | null;
           description_fr: string | null;
@@ -131,6 +151,7 @@ export type Database = {
           atc_prefix: string | null;
           substance: string | null;
           fiche_id: string | null;
+          dosage_nr: string | null;
           note_type: string;
           body: string;
           verified_on: string;
@@ -143,6 +164,7 @@ export type Database = {
           atc_prefix?: string | null;
           substance?: string | null;
           fiche_id?: string | null;
+          dosage_nr?: string | null;
           note_type: string;
           body: string;
           verified_on?: string;
@@ -239,6 +261,21 @@ export type Database = {
       search_products: {
         Args: { q: string };
         Returns: Database['public']['Tables']['products']['Row'][];
+      };
+      search_dosages: {
+        Args: { q: string };
+        Returns: {
+          authorization_nr: string;
+          /** null : autorisation retirée avant 0015, qui n'a aucun dosage. */
+          dosage_nr: string | null;
+          name: string;
+          product_name: string;
+          label: string | null;
+          atc_code: string | null;
+          substances: string | null;
+          category: string | null;
+          delisted: boolean;
+        }[];
       };
       resolve_codes: {
         Args: { codes: string[] };

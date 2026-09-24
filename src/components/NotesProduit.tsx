@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CalendarCheck,
   Check,
@@ -25,6 +25,7 @@ import {
   type NoteType,
   type ProductNote,
 } from '../lib/notes';
+import type { Dosage } from '../lib/types';
 
 /**
  * Les notes maison d'un médicament : bandeaux sous l'en-tête de la fiche,
@@ -33,10 +34,16 @@ import {
  */
 export function NotesProduit({
   authorizationNr,
+  dosageNr,
+  dosages,
   atcCode,
   substances,
 }: {
   authorizationNr: string;
+  /** Le dosage affiché par la fiche — null si elle montre l'autorisation. */
+  dosageNr: string | null;
+  /** Tous les dosages de l'autorisation, pour nommer celui qu'une note vise. */
+  dosages: Dosage[];
   atcCode: string | null;
   substances: string | null;
 }) {
@@ -53,12 +60,26 @@ export function NotesProduit({
     }
   }
 
+  // Changer de dosage ne remonte pas ce composant : la même fiche passe du 80
+  // au 600 mg. Sans ce numéro de requête, la posologie du 80 mg restait
+  // affichée — bouton « Copier » compris — pendant l'aller-retour, et pour de
+  // bon si sa réponse arrivait après celle du 600 mg.
+  const requete = useRef(0);
   const charger = useCallback(async () => {
-    setNotes(await notesPour(authorizationNr, atcCode, substances));
-  }, [authorizationNr, atcCode, substances]);
+    const mienne = ++requete.current;
+    const lignes = await notesPour(authorizationNr, dosageNr, atcCode, substances);
+    if (requete.current === mienne) setNotes(lignes);
+  }, [authorizationNr, dosageNr, atcCode, substances]);
+
+  // Le libellé court d'un dosage (« 300 mg ») : ce qu'une note précise vise.
+  const libelleDosage = (nr: string) => {
+    const d = dosages.find((x) => x.dosage_nr === nr);
+    return d?.label || d?.name || `dosage ${nr}`;
+  };
 
   useEffect(() => {
     setEdition(null);
+    setNotes([]);
     void charger();
   }, [charger]);
 
@@ -90,7 +111,9 @@ export function NotesProduit({
                 atcCode={atcCode}
                 substances={substances}
                 onAnnuler={() => setEdition(null)}
-                onEnregistrer={(champ) => agir(() => updateNote(note.id, champ))}
+                onEnregistrer={(champ) =>
+                  agir(() => updateNote(note.id, { note_type: champ.note_type, body: champ.body }))
+                }
               />
             ) : (
               <div
@@ -104,6 +127,9 @@ export function NotesProduit({
                   </p>
                   <p className="text-dose-text mt-1 flex flex-wrap items-center gap-x-2 text-[11px] opacity-70">
                     <span className="font-semibold">Posologie maison</span>
+                    {note.dosage_nr && (
+                      <span className="donnee font-semibold">{libelleDosage(note.dosage_nr)}</span>
+                    )}
                     {note.atc_prefix && <span className="donnee">classe {note.atc_prefix}</span>}
                     {note.substance && <span className="italic">{note.substance}</span>}
                     <span>
@@ -176,7 +202,9 @@ export function NotesProduit({
               atcCode={atcCode}
               substances={substances}
               onAnnuler={() => setEdition(null)}
-              onEnregistrer={(champ) => agir(() => updateNote(note.id, champ))}
+              onEnregistrer={(champ) =>
+                agir(() => updateNote(note.id, { note_type: champ.note_type, body: champ.body }))
+              }
             />
           ) : (
             <div
@@ -191,6 +219,11 @@ export function NotesProduit({
                 <p className="text-[13.5px] leading-snug whitespace-pre-wrap">{note.body}</p>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] opacity-75">
                   <span className="font-semibold">{TYPES_NOTES[note.note_type].label}</span>
+                  {note.dosage_nr && (
+                    <span className="donnee bg-surface-2 text-ink-2 rounded px-1 py-px">
+                      {libelleDosage(note.dosage_nr)}
+                    </span>
+                  )}
                   {note.atc_prefix && (
                     <span className="donnee bg-info-soft text-info-text rounded px-1 py-px">
                       classe {note.atc_prefix}
@@ -258,6 +291,8 @@ export function NotesProduit({
         {edition === 'nouvelle' ? (
           <EditeurNote
             authorizationNr={authorizationNr}
+            dosageNr={dosages.length > 1 ? dosageNr : null}
+            dosageLabel={dosageNr ? libelleDosage(dosageNr) : null}
             atcCode={atcCode}
             substances={substances}
             onAnnuler={() => setEdition(null)}
@@ -283,6 +318,8 @@ export function NotesProduit({
 function EditeurNote({
   initial,
   authorizationNr,
+  dosageNr = null,
+  dosageLabel = null,
   atcCode,
   substances,
   onAnnuler,
@@ -290,11 +327,15 @@ function EditeurNote({
 }: {
   initial?: ProductNote;
   authorizationNr: string;
+  /** Renseigné seulement si l'autorisation a plusieurs dosages. */
+  dosageNr?: string | null;
+  dosageLabel?: string | null;
   atcCode: string | null;
   substances: string | null;
   onAnnuler: () => void;
   onEnregistrer: (note: {
     authorization_nr: string | null;
+    dosage_nr: string | null;
     atc_prefix: string | null;
     substance: string | null;
     note_type: NoteType;
@@ -303,8 +344,15 @@ function EditeurNote({
 }) {
   const [type, setType] = useState<NoteType>(initial?.note_type ?? 'conseil');
   const [body, setBody] = useState(initial?.body ?? '');
-  /** 'produit' | 'atc' | 'sub:<principe>' */
-  const [cible, setCible] = useState<string>('produit');
+  /**
+   * 'dosage' | 'produit' | 'atc' | 'sub:<principe>'
+   *
+   * Portée par défaut : LE DOSAGE affiché, quand la fiche en montre un. Une
+   * note trop étroite manque à quelques dosages ; une note trop large — une
+   * posologie adulte étendue au suppositoire de 80 mg — est dangereuse. Dans
+   * le doute, on choisit l'erreur qui ne blesse personne.
+   */
+  const [cible, setCible] = useState<string>(dosageNr ? 'dosage' : 'produit');
   // Trois portées : le produit, son code ATC complet, chacun de ses principes
   // actifs — pas les niveaux intermédiaires, sources de rayonnement involontaire.
   const principes = (substances ?? '')
@@ -339,6 +387,20 @@ function EditeurNote({
       {!modification && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-ink-3 text-[12px]">Porte sur :</span>
+          {dosageNr && (
+            <button
+              type="button"
+              onClick={() => setCible('dosage')}
+              aria-pressed={cible === 'dosage'}
+              title="Seulement ce dosage"
+              className={cn(
+                'donnee bg-accent-soft text-accent cursor-pointer rounded-full px-2 py-0.5 text-[12px] transition-all',
+                cible === 'dosage' ? 'ring-accent font-semibold ring-2' : 'opacity-55 hover:opacity-100',
+              )}
+            >
+              ce dosage · {dosageLabel}
+            </button>
+          )}
           {/* Trois teintes, une par nature de portée : produit teal,
               classe ATC bleue, principe actif vert — même code couleur
               que les badges des bandeaux. */}
@@ -351,7 +413,7 @@ function EditeurNote({
               cible === 'produit' ? 'ring-accent font-semibold ring-2' : 'opacity-55 hover:opacity-100',
             )}
           >
-            ce produit
+            {dosageNr ? 'tous les dosages' : 'ce produit'}
           </button>
           {atcCode && (
             <button
@@ -404,7 +466,9 @@ function EditeurNote({
           disabled={!body.trim()}
           onClick={() =>
             onEnregistrer({
-              authorization_nr: cible === 'produit' ? authorizationNr : null,
+              authorization_nr:
+                cible === 'produit' || cible === 'dosage' ? authorizationNr : null,
+              dosage_nr: cible === 'dosage' ? dosageNr : null,
               atc_prefix: cible === 'atc' ? atcCode : null,
               substance: cible.startsWith('sub:') ? cible.slice(4) : null,
               note_type: type,

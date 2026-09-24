@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calculator,
@@ -16,6 +16,7 @@ import { NotesProduit } from '../components/NotesProduit';
 import { LinkPicker } from '../components/LinkPicker';
 import { cn } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { categorie } from '../lib/categories';
 import { useStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import {
@@ -37,16 +38,14 @@ import type { Resource, ScanHit } from '../lib/types';
 import { chercherFiches, fichesPourAtc, LIBELLES_VOLET } from '../lib/fiches';
 import type { EntreeFiche } from '../lib/fiches';
 
-/** Catégorie de remise : lisible à un mètre, du plus strict au plus libre. */
-const CATEGORIES: Record<string, { libelle: string; classes: string }> = {
-  A: { libelle: 'A — ordonnance non renouvelable', classes: 'bg-critical-soft text-critical-text' },
-  B: { libelle: 'B — sur ordonnance', classes: 'bg-warning-soft text-warning-text' },
-  D: { libelle: 'D — conseil spécialisé', classes: 'bg-accent-soft text-accent' },
-  E: { libelle: 'E — vente libre', classes: 'bg-good-soft text-good-text' },
-};
 
 export function ProductPage() {
   const { nr } = useParams<{ nr: string }>();
+  // Le dosage affiché (?d=) et l'emballage scanné (?g=). En paramètres plutôt
+  // qu'en segments : « /p/47505 » reste valide pour les liens déjà partagés.
+  const [params, setParams] = useSearchParams();
+  const dosageDemande = params.get('d');
+  const gtinScanne = params.get('g');
   const navigate = useNavigate();
   const { canEdit } = useAuth();
   const ouvrirMenu = useMenu();
@@ -82,9 +81,17 @@ export function ProductPage() {
   const [notFound, setNotFound] = useState(false);
   const noticeFrame = useRef<HTMLIFrameElement>(null);
 
+  // Le n° d'autorisation affiché EN CE MOMENT. Deux boîtes scannées à
+  // quelques centaines de millisecondes : la réponse de la première, arrivée
+  // après, écrivait son produit sous l'adresse de la seconde.
+  const nrCourant = useRef(nr);
+  nrCourant.current = nr;
+
   const load = useCallback(async () => {
     if (!nr) return;
+    const encore = () => nrCourant.current === nr;
     const found = await productHit(nr);
+    if (!encore()) return;
     if (!found) {
       setNotFound(true);
       setLoading(false);
@@ -96,12 +103,15 @@ export function ProductPage() {
       .select('delisted')
       .eq('authorization_nr', nr)
       .maybeSingle()
-      .then(({ data }) => setDelisted(Boolean(data?.delisted)));
+      .then(({ data }) => encore() && setDelisted(Boolean(data?.delisted)));
     const [docs, pkgs, detail] = await Promise.all([
       listNotices(nr),
-      listPackages(nr),
+      // Un échec ici ne doit pas laisser la fiche bloquée sur son indicateur
+      // de chargement : sans emballages, elle reste utile.
+      listPackages(nr).catch(() => [] as PackageRow[]),
       linkDetails(nr, found.product.atc_code),
     ]);
+    if (!encore()) return;
     // Seule l'information professionnelle intéresse le comptoir.
     const pros = docs.filter((n) => n.doc_type === 'SmPC');
     setNotices(pros);
@@ -109,7 +119,9 @@ export function ProductPage() {
     setLinks(detail);
     setActiveDoc((current) => current ?? bestByType(pros).SmPC ?? null);
     if (found.product.atc_code) {
-      setGenerics(await listGenerics(found.product.atc_code, nr));
+      const generiques = await listGenerics(found.product.atc_code, nr);
+      if (!encore()) return;
+      setGenerics(generiques);
     }
     setLoading(false);
   }, [nr]);
@@ -193,7 +205,31 @@ export function ProductPage() {
   }
 
   const product = hit?.product;
-  const categorie = product?.category ? CATEGORIES[product.category] : null;
+  const dosages = hit?.dosages ?? [];
+  /**
+   * Le dosage que montre la fiche : celui de l'adresse ; à défaut, le seul
+   * s'il n'y en a qu'un. Sinon aucun — la fiche présente alors l'autorisation
+   * et ses dosages en puces, plutôt que d'en élire un au hasard (c'était
+   * l'erreur de l'ancien import : le premier venu, 80 mg, pour tous).
+   */
+  const dosageDuScan = gtinScanne
+    ? packages.find((k) => k.gtin === gtinScanne)?.dosage_nr ?? null
+    : null;
+  const courant =
+    dosages.find((d) => d.dosage_nr === (dosageDemande ?? dosageDuScan)) ??
+    (dosages.length === 1 ? dosages[0] : null);
+  const retire = delisted || Boolean(courant?.delisted);
+  // Une liaison faite depuis la fiche vaut pour l'autorisation ENTIÈRE ; sur
+  // un médicament à plusieurs dosages, « ce produit » laissait croire au seul
+  // dosage affiché.
+  const portee = dosages.length > 1 ? 'tous les dosages' : 'ce produit';
+  const categorieCode = courant?.category ?? product?.category ?? null;
+  const categorieCourante = categorie(categorieCode);
+  const substances = courant?.substances ?? product?.substances ?? null;
+  // Les emballages du dosage affiché ; tous, groupés, sans dosage choisi.
+  const emballages = courant
+    ? packages.filter((k) => k.dosage_nr === courant.dosage_nr)
+    : packages;
 
   if (loading || notFound || !product) {
     return (
@@ -222,7 +258,7 @@ export function ProductPage() {
         onMenu={ouvrirMenu}
         actions={
           <Link
-            to={`/dispensation?p=${product.authorization_nr}`}
+            to={`/dispensation?p=${product.authorization_nr}${courant ? `&d=${courant.dosage_nr}` : ''}`}
             className="border-line text-ink-2 hover:text-ink hover:bg-surface-2 rounded-control
                        inline-flex items-center gap-1.5 border px-2.5 py-1.5 text-[13px]"
           >
@@ -246,20 +282,20 @@ export function ProductPage() {
             </button>
             <Pill className="text-accent size-5 shrink-0" aria-hidden />
             <h1 className="text-ink min-w-0 truncate text-[17px] font-semibold tracking-[-0.01em]">
-              {product.name}
+              {courant?.name ?? product.name}
             </h1>
-            {categorie && (
+            {categorieCourante && (
               <span
-                title={categorie.libelle}
+                title={categorieCourante.libelle}
                 className={cn(
                   'shrink-0 rounded px-2 py-0.5 text-xs font-semibold',
-                  categorie.classes,
+                  categorieCourante.classes,
                 )}
               >
-                {product.category}
+                {categorieCode}
               </span>
             )}
-            {delisted && (
+            {retire && (
               <span className="bg-warning-soft text-warning-text shrink-0 rounded px-2 py-0.5 text-xs font-medium">
                 retiré du marché
               </span>
@@ -274,11 +310,44 @@ export function ProductPage() {
               </span>
             )}
           </div>
-          {product.substances &&
+          {/* Les dosages de l'autorisation. Un clic change le dosage affiché
+              sans recharger : notice, liaisons et ressources sont celles de
+              l'autorisation, elles ne bougent pas. */}
+          {dosages.length > 1 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-9">
+              {dosages.map((d) => {
+                const actif = d.dosage_nr === courant?.dosage_nr;
+                return (
+                  <button
+                    key={d.dosage_nr}
+                    type="button"
+                    onClick={() => {
+                      const suivant = new URLSearchParams(params);
+                      suivant.set('d', d.dosage_nr);
+                      suivant.delete('g');
+                      setParams(suivant, { replace: true });
+                    }}
+                    aria-pressed={actif}
+                    title={d.name}
+                    className={cn(
+                      'donnee cursor-pointer rounded-full border px-2.5 py-0.5 text-[12.5px] transition-colors',
+                      actif
+                        ? 'border-accent bg-accent text-on-accent font-semibold'
+                        : 'border-line bg-surface-1 text-ink-2 hover:border-accent hover:text-accent',
+                      d.delisted && !actif && 'line-through opacity-60',
+                    )}
+                  >
+                    {d.label || d.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {substances &&
             // La flèche de dépliage n'apparaît que s'il y a quelque chose à
             // déplier — sur « ibuprofenum », un contrôle qui ne fait rien
             // n'est que du bruit. Seuil : substances multiples ou texte long.
-            (product.substances.length > 70 || /[;,]/.test(product.substances) ? (
+            (substances.length > 70 || /[;,]/.test(substances) ? (
               <button
                 type="button"
                 onClick={() => setSubstancesOuvertes((v) => !v)}
@@ -291,19 +360,21 @@ export function ProductPage() {
                   className={cn('mt-0.5 shrink-0 transition-transform', !substancesOuvertes && '-rotate-90')}
                 />
                 <span className={cn('min-w-0', !substancesOuvertes && 'truncate')}>
-                  {product.substances}
+                  {substances}
                 </span>
               </button>
             ) : (
-              <p className="text-ink-3 mt-1 pl-9 text-[13px]">{product.substances}</p>
+              <p className="text-ink-3 mt-1 pl-9 text-[13px]">{substances}</p>
             ))}
         </div>
 
         {/* ---- Notes maison : impossibles à manquer ---- */}
         <NotesProduit
           authorizationNr={product.authorization_nr}
+          dosageNr={courant?.dosage_nr ?? null}
+          dosages={dosages}
           atcCode={product.atc_code}
-          substances={product.substances}
+          substances={substances}
         />
 
         {/* ---- Corps : sommaire · notice · périphérie ---- */}
@@ -390,6 +461,7 @@ export function ProductPage() {
                   <div className="mb-2">
                     <LinkPicker
                       product={product}
+                      portee={portee}
                       linked={hit!.resources as Resource[]}
                       onDone={() => void load()}
                       onClose={() => setLinking(false)}
@@ -410,7 +482,7 @@ export function ProductPage() {
                           <div className="mt-1 flex items-center justify-end gap-1">
                             {links.direct.has(resource.id) && (
                               <span className="bg-surface-2 text-ink-3 rounded px-1.5 py-0.5 text-[11px]">
-                                ce produit
+                                {portee}
                               </span>
                             )}
                             {(links.byPrefix.get(resource.id) ?? []).map((prefix) => (
@@ -451,20 +523,49 @@ export function ProductPage() {
                 liees={fichesLiees}
                 canEdit={canEdit}
                 onChange={rechargerFiches}
+                dosageCount={dosages.length}
               />
 
-              {packages.length > 0 && (
+              {emballages.length > 0 && (
                 <section>
-                  <h2 className="etiquette mb-1.5">Emballages ({packages.length})</h2>
+                  <h2 className="etiquette mb-1.5">
+                    Emballages {courant && dosages.length > 1 ? `· ${courant.label || courant.name} ` : ''}(
+                    {emballages.length})
+                  </h2>
                   <div className="border-line bg-surface-1 shadow-card rounded-card border">
-                    {packages.map((pkg) => (
+                    {emballages.map((pkg) => (
                       <div
                         key={pkg.gtin}
-                        className="border-line flex items-baseline gap-2 border-b px-3 py-1.5 last:border-0"
+                        className={cn(
+                          'border-line flex items-baseline gap-2 border-b px-3 py-1.5 last:border-0',
+                          // La boîte qu'on vient de scanner : celle qu'on a en main.
+                          pkg.gtin === gtinScanne && 'bg-accent-soft',
+                        )}
                       >
                         <span className="text-ink-2 min-w-0 flex-1 truncate text-[13px]">
+                          {/* Sans dosage choisi, les emballages de tous les dosages
+                              se côtoient : chacun dit alors à quel dosage il appartient. */}
+                          {!courant && dosages.length > 1 && pkg.dosage_nr && (
+                            <span className="donnee text-ink-3 mr-1.5">
+                              {dosages.find((d) => d.dosage_nr === pkg.dosage_nr)?.label}
+                            </span>
+                          )}
                           {pkg.description_fr || pkg.description || '—'}
                         </span>
+                        {/* Pour 39 dosages, la catégorie varie selon l'emballage
+                            (Fluimucil 200 existe en D et en B) : on ne la montre
+                            ici que lorsqu'elle diffère de celle de l'en-tête. */}
+                        {pkg.category && pkg.category !== categorieCode && (
+                          <span
+                            title={categorie(pkg.category)?.libelle}
+                            className={cn(
+                              'shrink-0 rounded px-1.5 py-px text-[11px] font-semibold',
+                              categorie(pkg.category)?.classes,
+                            )}
+                          >
+                            {pkg.category}
+                          </span>
+                        )}
                         {pkg.price_public != null && (
                           <span className="text-ink tabular shrink-0 text-[13px] font-medium">
                             {pkg.price_public.toFixed(2)}
@@ -520,8 +621,11 @@ function SectionSemaphore({
   liees,
   canEdit,
   onChange,
+  dosageCount,
 }: {
   nr: string;
+  /** Plus d'un dosage : une liaison se dit « tous les dosages ». */
+  dosageCount: number;
   parAtc: EntreeFiche[];
   liees: EntreeFiche[];
   canEdit: boolean;
@@ -617,11 +721,11 @@ function SectionSemaphore({
                   )}
                   title={
                     manuelle
-                      ? 'Liée à ce produit'
+                      ? 'Liée à ce médicament, tous dosages confondus'
                       : `Remontée par la classe ${fiche.atc.join(', ')}`
                   }
                 >
-                  {manuelle ? 'ce produit' : fiche.atc[0]}
+                  {manuelle ? (dosageCount > 1 ? 'tous les dosages' : 'ce produit') : fiche.atc[0]}
                 </span>
                 {canEdit && manuelle && (
                   <button

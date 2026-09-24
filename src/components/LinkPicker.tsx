@@ -7,6 +7,9 @@ import { useStore } from '../lib/store';
 
 type Props = {
   product: Product;
+  /** « tous les dosages » sur un médicament qui en a plusieurs : la liaison
+   *  vaut pour l'autorisation entière, pas pour le seul dosage affiché. */
+  portee?: string;
   /** Ressources déjà liées, à exclure des propositions. */
   linked: Resource[];
   onDone: () => void;
@@ -18,7 +21,7 @@ type Props = {
  * ou un niveau de la classe ATC). Boutons plutôt que saisie libre pour la
  * portée : impossible de se tromper de code.
  */
-export function LinkPicker({ product, linked, onDone, onClose }: Props) {
+export function LinkPicker({ product, portee = 'ce produit', linked, onDone, onClose }: Props) {
   const { resources } = useStore();
   const [filter, setFilter] = useState('');
   const [scope, setScope] = useState<string>(product.authorization_nr);
@@ -71,7 +74,7 @@ export function LinkPicker({ product, linked, onDone, onClose }: Props) {
               : 'border-line text-ink-2 hover:border-accent-ring'
           }`}
         >
-          ce produit
+          {portee}
         </button>
         {levels.map((prefix) => (
           <button

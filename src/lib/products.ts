@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { ProductRow, ScanHit } from './types';
+import type { DosageHit, ProductRow, ScanHit } from './types';
 
 /**
  * Détecte si la saisie ressemble à un code scanné plutôt qu'à du texte.
@@ -40,6 +40,31 @@ export async function scanGtin(code: string): Promise<ScanHit | null> {
   const { data, error } = await supabase.rpc('scan_gtin', { code });
   if (error) throw error;
   return (data as ScanHit | null) ?? null;
+}
+
+/**
+ * Dosages dont le nom, celui de leur autorisation ou le principe actif
+ * correspond à la saisie — une ligne PAR DOSAGE. « dafalgan 300 » trouve le
+ * suppositoire à 300 mg sous son propre nom, au lieu du seul 80 mg que
+ * l'ancien import laissait subsister.
+ */
+export async function searchDosages(q: string): Promise<DosageHit[]> {
+  const { data, error } = await supabase.rpc('search_dosages', { q });
+  if (error) return [];
+  return data ?? [];
+}
+
+/**
+ * L'adresse d'une fiche. Le dosage passe en paramètre plutôt qu'en segment :
+ * « /p/47505 » reste valide pour les liens déjà partagés, les notes et le
+ * journal, qui ne désignent qu'une autorisation.
+ */
+export function routeProduit(nr: string, dosageNr?: string | null, gtin?: string | null): string {
+  const params = new URLSearchParams();
+  if (dosageNr) params.set('d', dosageNr);
+  if (gtin) params.set('g', gtin);
+  const q = params.toString();
+  return `/p/${nr}${q ? `?${q}` : ''}`;
 }
 
 /**
@@ -126,6 +151,10 @@ export async function resolveCodes(
 export type PackageRow = {
   gtin: string;
   authorization_nr: string;
+  /** Le dosage de l'emballage : la fiche en liste ceux du dosage affiché. */
+  dosage_nr: string | null;
+  /** Catégorie propre à l'emballage — elle diffère de celle du dosage pour 39 dosages. */
+  category: string | null;
   pack_code: string;
   description: string | null;
   description_fr: string | null;
@@ -145,7 +174,7 @@ export function libelleFr<T extends { name?: string | null; name_fr?: string | n
 export async function listPackages(authorizationNr: string): Promise<PackageRow[]> {
   const { data, error } = await supabase
     .from('packages')
-    .select('gtin,authorization_nr,pack_code,description,description_fr,price_public')
+    .select('gtin,authorization_nr,dosage_nr,category,pack_code,description,description_fr,price_public')
     .eq('authorization_nr', authorizationNr)
     .order('pack_code');
   if (error) throw error;

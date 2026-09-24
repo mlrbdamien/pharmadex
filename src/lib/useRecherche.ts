@@ -3,9 +3,9 @@ import { useStore } from './store';
 import { estAnnote } from './notes';
 import { localFilter, searchResources } from './resources';
 import type { Resource } from './types';
-import { looksLikeScan, normalizeScannedCode, scanGtin, searchProducts } from './products';
+import { looksLikeScan, normalizeScannedCode, scanGtin, searchDosages } from './products';
 import { rechercher, type Resultat } from './recherche';
-import type { ProductRow, ScanHit } from './types';
+import type { DosageHit, ScanHit } from './types';
 
 /**
  * La recherche du comptoir, telle que l'écran d'accueil et la palette la
@@ -26,7 +26,13 @@ export function useRecherche(requete: string): {
   distant: Resource[] | null;
 } {
   const { resources, fiches, notes, notesIndex } = useStore();
-  const [produits, setProduits] = useState<ProductRow[]>([]);
+  // Chaque lot de dosages retient la requête qui l'a produit. Sans cette
+  // étiquette, les dosages de « dafalgan » restaient affichés — et ouvrables
+  // par Entrée — pendant que « dafalgan 300 » était encore en vol.
+  const [dosages, setDosages] = useState<{ pour: string; lignes: DosageHit[] }>({
+    pour: '',
+    lignes: [],
+  });
   const [distant, setDistant] = useState<Resource[] | null>(null);
   const [scan, setScan] = useState<ScanHit | null>(null);
   const [cherche, setCherche] = useState(false);
@@ -37,7 +43,7 @@ export function useRecherche(requete: string): {
   useEffect(() => {
     const mien = ++requeteId.current;
     if (!q) {
-      setProduits([]);
+      setDosages({ pour: '', lignes: [] });
       setDistant(null);
       setScan(null);
       setCherche(false);
@@ -51,7 +57,7 @@ export function useRecherche(requete: string): {
         const trouve = code ? await scanGtin(code).catch(() => null) : null;
         if (requeteId.current !== mien) return;
         setScan(trouve);
-        setProduits([]);
+        setDosages({ pour: q, lignes: [] });
         // Un code inconnu de Swissmedic laisse la réponse vide : le journal
         // des recherches vides doit pouvoir le consigner.
         setDistant(trouve ? (trouve.resources as Resource[]) : []);
@@ -62,11 +68,11 @@ export function useRecherche(requete: string): {
       // scan de la boîte.
       const [ressources, lignes] = await Promise.all([
         searchResources(q).catch(() => [] as Resource[]),
-        searchProducts(q).catch(() => [] as ProductRow[]),
+        searchDosages(q).catch(() => [] as DosageHit[]),
       ]);
       if (requeteId.current !== mien) return;
       setScan(null);
-      setProduits(lignes);
+      setDosages({ pour: q, lignes });
       setDistant(ressources);
       setCherche(false);
     }, 150);
@@ -76,15 +82,16 @@ export function useRecherche(requete: string): {
   const resultats = useMemo(
     () =>
       rechercher(q, {
-        produits,
+        dosages: dosages.pour === q ? dosages.lignes : [],
         fiches,
         // Postgres fait autorité (radicalisation, tsvector) ; le cache local
         // tient l'écran pendant que la réponse est en vol.
         ressources: distant ?? localFilter(resources, q),
         notes,
-        estAnnote: (p) => estAnnote(notesIndex, p.authorization_nr, p.atc_code, p.substances),
+        estAnnote: (d) =>
+          estAnnote(notesIndex, d.authorization_nr, d.atc_code, d.substances, d.dosage_nr),
       }),
-    [q, produits, distant, fiches, resources, notes, notesIndex],
+    [q, dosages, distant, fiches, resources, notes, notesIndex],
   );
 
   return { resultats, scan, cherche, distant };

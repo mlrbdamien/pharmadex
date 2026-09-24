@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, Search, SearchX } from 'lucide-react';
 import { ListeResultats } from './ListeResultats';
 import { useRecherche, useSelection } from '../lib/useRecherche';
+import { normalizeScannedCode, routeProduit } from '../lib/products';
 import type { Resultat } from '../lib/recherche';
 
 /**
@@ -33,16 +34,29 @@ export function Palette({
     if (ouverte) {
       setRequete(saisieInitiale);
       champ.current?.focus();
+    } else {
+      // La palette reste montée, fermée. Sans cette remise à zéro, le scan
+      // précédent survivait : au scan suivant depuis une fiche, le premier
+      // chiffre rouvrait la palette qui renvoyait aussitôt vers l'ANCIENNE
+      // boîte — et le nouveau code n'était jamais cherché.
+      setRequete('');
     }
   }, [ouverte, saisieInitiale]);
 
   // Un scan reconnu est une réponse sans ambiguïté : inutile de faire choisir.
   useEffect(() => {
     if (ouverte && scan) {
+      setRequete('');
       onFermer();
-      navigate(`/p/${scan.product.authorization_nr}`);
+      navigate(
+        routeProduit(
+          scan.product.authorization_nr,
+          scan.product.dosage_nr,
+          normalizeScannedCode(requete.trim()),
+        ),
+      );
     }
-  }, [ouverte, scan, navigate, onFermer]);
+  }, [ouverte, scan, navigate, onFermer, requete]);
 
   // Garder la ligne sélectionnée visible quand on descend au clavier.
   useEffect(() => {

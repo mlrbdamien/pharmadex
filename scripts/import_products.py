@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Import de la liste Swissmedic des emballages autorisés vers Pharmadex.
 
-Produit deux CSV (products.csv, packages.csv) à partir du fichier
-« Zugelassene Packungen Humanarzneimittel », en calculant le GTIN de chaque
-emballage. L'écriture en base est faite par le workflow (psql \\copy + upsert),
+Produit trois CSV (products.csv, dosages.csv, packages.csv) à partir du
+fichier « Zugelassene Packungen Humanarzneimittel », en calculant le GTIN de
+chaque emballage.
+
+Trois niveaux, parce que Swissmedic en a trois : l'AUTORISATION (un numéro,
+une notice, un code ATC), le DOSAGE (« Dosisstärke » : Dafalgan supp 80, 150,
+300 et 600 mg sont quatre dosages d'une seule autorisation) et l'EMBALLAGE
+(un GTIN). Les fusionner au niveau de l'autorisation effaçait 38 % des
+dosages — un scan de Dafalgan 300 affichait « 80 mg ». L'écriture en base est faite par le workflow (psql \\copy + upsert),
 pas par ce script — il reste ainsi testable sans identifiants.
 
 Usage :
@@ -28,6 +34,7 @@ from pathlib import Path
 import openpyxl
 
 from formes_fr import forme_non_traduite, traduire_emballage, traduire_nom
+from libelles import libelle_commun, libelle_dosage, libelle_repli
 
 URL = (
     "https://www.swissmedic.ch/dam/swissmedic/en/dokumente/internetlisten/"
@@ -41,13 +48,20 @@ URL = (
 WANTED = {
     "zulassungs-nummer": "authorization_nr",
     "zulassungsnummer": "authorization_nr",
+    "dosisstarke-nummer": "dosage_nr",
     "packungscode": "pack_code",
     "atc-code": "atc_code",
     "wirkstoff": "substances",
     "zulassungsinhaberin": "company",
     "packungsgrosse": "pack_size",
     "einheit": "unit",
-    "abgabekategorie packung": "category",
+    # Trois catégories de remise, une par niveau. Swissmedic agrège lui-même
+    # vers le haut : « B/D » quand les niveaux inférieurs diffèrent. On lit
+    # chacune à son niveau plutôt que d'en déduire une — Perenterol 250 est
+    # en D, Perenterol 500 en B, le médicament en B/D.
+    "abgabekategorie packung": "category_package",
+    "abgabekategorie dosisstarke": "category_dosage",
+    "abgabekategorie arzneimittel": "category_product",
 }
 NAME_HINTS = ("bezeichnung", "praparat", "arzneimittel des wirkstoffs", "heilmittel ")
 
@@ -81,7 +95,7 @@ def find_header(rows: list[tuple]) -> tuple[int, dict[str, int]]:
                     cols[field] = col
             if name_col is None and any(h in label for h in NAME_HINTS):
                 name_col = col
-        if {"authorization_nr", "pack_code", "atc_code"} <= cols.keys():
+        if {"authorization_nr", "dosage_nr", "pack_code", "atc_code"} <= cols.keys():
             if name_col is None:
                 # Repli : la colonne du nom est celle dont le libellé contient
                 # « bezeichnung » seul ; si absent, on échoue explicitement.
@@ -101,6 +115,7 @@ def parse(path: Path):
     header_idx, cols = find_header(rows)
 
     products: dict[str, dict] = {}
+    dosages: dict[tuple[str, str], dict] = {}
     packages: dict[str, dict] = {}
     skipped = 0
 
@@ -112,12 +127,15 @@ def parse(path: Path):
 
     for row in rows[header_idx + 1 :]:
         auth = cell(row, "authorization_nr")
+        dose = cell(row, "dosage_nr")
         pack = cell(row, "pack_code")
         name = cell(row, "name")
         # Les numéros arrivent parfois en float Excel (« 44447.0 »)
         auth = re.sub(r"\.0$", "", auth)
+        dose = re.sub(r"\.0$", "", dose)
         pack = re.sub(r"\.0$", "", pack)
-        if not re.fullmatch(r"[0-9]{1,5}", auth) or not re.fullmatch(r"[0-9]{1,3}", pack) or not name:
+        if (not re.fullmatch(r"[0-9]{1,5}", auth) or not re.fullmatch(r"[0-9]{1,3}", dose)
+                or not re.fullmatch(r"[0-9]{1,3}", pack) or not name):
             skipped += 1
             continue
         auth = auth.zfill(5)
@@ -127,36 +145,81 @@ def parse(path: Path):
             auth,
             {
                 "authorization_nr": auth,
-                "name": name,
                 "company": cell(row, "company"),
                 "atc_code": atc,
-                "substances": cell(row, "substances"),
-                "category": cell(row, "category"),
+                "category": cell(row, "category_product"),
             },
         )
-        # Un même n° d'autorisation couvre plusieurs dosages : on garde le nom
-        # le plus court (généralement sans le dosage), et le premier ATC non vide.
-        if name and len(name) < len(product["name"]):
-            product["name"] = name
+        # L'ATC ne varie jamais d'un dosage à l'autre (vérifié : 0 cas sur
+        # 2 148 autorisations à plusieurs dosages) ; on garde le premier non vide.
         if not product["atc_code"] and atc:
             product["atc_code"] = atc
+
+        # Un dosage a UN nom : toutes ses lignes le répètent. Les principes
+        # actifs, eux, peuvent différer d'un dosage à l'autre (36 autorisations).
+        dosages.setdefault(
+            (auth, dose),
+            {
+                "authorization_nr": auth,
+                "dosage_nr": dose,
+                "name": name,
+                "substances": cell(row, "substances"),
+                "category": cell(row, "category_dosage"),
+            },
+        )
 
         gtin = build_gtin(auth, pack)
         size = " ".join(x for x in (cell(row, "pack_size"), cell(row, "unit")) if x)
         packages[gtin] = {
             "gtin": gtin,
             "authorization_nr": auth,
+            "dosage_nr": dose,
             "pack_code": pack.zfill(3),
             "description": traduire_emballage(size),
+            "category": cell(row, "category_package"),
         }
+
+    # Le nom de l'autorisation n'existe pas chez Swissmedic : c'est le tronc
+    # commun des noms de ses dosages (« Dafalgan, Suppositorien »). Le choisir
+    # parmi eux — comme on le faisait — revient à élire un dosage au hasard.
+    par_autorisation: dict[str, list[str]] = {}
+    for d in dosages.values():
+        par_autorisation.setdefault(d["authorization_nr"], []).append(d["name"])
+    # Calculé AVANT la traduction, sur des noms de même source : traduire le
+    # tronc puis le comparer à des noms encore allemands ne recouvre plus rien.
+    for auth, noms in par_autorisation.items():
+        products[auth]["name"] = libelle_commun(noms) or libelle_repli(noms)
+    # Principes actifs de l'autorisation : l'UNION de ceux de ses dosages
+    # (36 autorisations en ont de différents). Une note « principe actif »
+    # doit trouver le produit quel que soit le dosage qui porte la substance.
+    substances: dict[str, list[str]] = {}
+    for d in dosages.values():
+        liste = substances.setdefault(d["authorization_nr"], [])
+        for sub in re.split(r"\s*,\s*", d["substances"]):
+            if sub and sub not in liste:
+                liste.append(sub)
+    for auth, liste in substances.items():
+        products[auth]["substances"] = ", ".join(liste)
+    for d in dosages.values():
+        d["label"] = libelle_dosage(d["name"], products[d["authorization_nr"]]["name"])
+    # Swissmedic nomme parfois deux dosages à l'identique (Pamorelin, Salvacyl :
+    # 12 autorisations). Deux puces pareilles seraient pires qu'une puce sèche :
+    # on affiche alors le numéro officiel, la seule chose qui les distingue.
+    par_puce: dict[tuple[str, str], list[dict]] = {}
+    for d in dosages.values():
+        par_puce.setdefault((d["authorization_nr"], d["label"]), []).append(d)
+    for groupe in par_puce.values():
+        if len(groupe) > 1:
+            for d in groupe:
+                d["label"] = f"dosage {d['dosage_nr']}"
 
     # Traduction des suffixes de forme, une fois le nom le plus court retenu.
     restes: dict[str, int] = {}
-    for product in products.values():
-        reste = forme_non_traduite(product["name"])
+    for ligne in (*products.values(), *dosages.values()):
+        reste = forme_non_traduite(ligne["name"])
         if reste:
             restes[reste] = restes.get(reste, 0) + 1
-        product["name"] = traduire_nom(product["name"])
+        ligne["name"] = traduire_nom(ligne["name"])
     if restes:
         top = sorted(restes.items(), key=lambda kv: -kv[1])[:12]
         print(f"formes restées en allemand : {sum(restes.values())} produits, "
@@ -164,7 +227,7 @@ def parse(path: Path):
         for forme, n in top:
             print(f"    {n:4}  {forme[:70]}", file=sys.stderr)
 
-    return products, packages, skipped, header_idx
+    return products, dosages, packages, skipped, header_idx
 
 
 def write_csv(path: Path, rows: dict, fields: list[str]) -> None:
@@ -190,22 +253,26 @@ def main() -> None:
         path = Path("/tmp/zugelassene_packungen_human.xlsx")
         path.write_bytes(data)
 
-    products, packages, skipped, header_idx = parse(path)
-    print(f"en-têtes ligne {header_idx} · {len(products)} produits · {len(packages)} emballages · {skipped} lignes ignorées")
+    products, dosages, packages, skipped, header_idx = parse(path)
+    print(f"en-têtes ligne {header_idx} · {len(products)} autorisations · {len(dosages)} dosages · "
+          f"{len(packages)} emballages · {skipped} lignes ignorées")
 
     if args.dry_run:
         sample = list(packages.values())[:3]
         for pkg in sample:
+            dosage = dosages[(pkg["authorization_nr"], pkg["dosage_nr"])]
             product = products[pkg["authorization_nr"]]
-            print(f"  {pkg['gtin']}  {product['name'][:50]:<50}  {product['atc_code'] or '—'}  {pkg['description']}")
+            print(f"  {pkg['gtin']}  {dosage['name'][:50]:<50}  {product['atc_code'] or '—'}  {pkg['description']}")
         return
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     write_csv(args.out_dir / "products.csv", products,
               ["authorization_nr", "name", "company", "atc_code", "substances", "category"])
+    write_csv(args.out_dir / "dosages.csv", {k: v for k, v in dosages.items()},
+              ["authorization_nr", "dosage_nr", "name", "label", "substances", "category"])
     write_csv(args.out_dir / "packages.csv", packages,
-              ["gtin", "authorization_nr", "pack_code", "description"])
-    print(f"écrit : {args.out_dir}/products.csv, {args.out_dir}/packages.csv")
+              ["gtin", "authorization_nr", "dosage_nr", "pack_code", "description", "category"])
+    print(f"écrit : products.csv, dosages.csv, packages.csv dans {args.out_dir}")
 
 
 if __name__ == "__main__":

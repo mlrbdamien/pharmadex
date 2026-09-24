@@ -4,16 +4,24 @@ import { CalendarClock, Eraser, Loader2, Pill, Search, X } from 'lucide-react';
 import { EnteteEcran, useMenu } from '../components/Coquille';
 import { Card, CardHeader, cn } from '../components/ui';
 import {
-  libelleFr,
   listPackages,
   looksLikeScan,
   normalizeScannedCode,
+  productHit,
   scanGtin,
-  searchProducts,
+  searchDosages,
   type PackageRow,
 } from '../lib/products';
 import { notesPour, type ProductNote } from '../lib/notes';
-import type { ProductRow } from '../lib/types';
+import type { Dosage, DosageHit } from '../lib/types';
+
+/** Le médicament choisi : son autorisation, et les dosages parmi lesquels choisir. */
+type Choix = {
+  nr: string;
+  nom: string;
+  atc: string | null;
+  dosages: Dosage[];
+};
 import {
   arrondi,
   aujourdhuiIso,
@@ -55,9 +63,12 @@ export function Dispensation() {
 
   // — Produit (facultatif : il ne fait que pré-remplir la quantité)
   const [recherche, setRecherche] = useState('');
-  const [resultats, setResultats] = useState<ProductRow[]>([]);
+  const [resultats, setResultats] = useState<DosageHit[]>([]);
   const [cherche, setCherche] = useState(false);
-  const [produit, setProduit] = useState<ProductRow | null>(null);
+  const [produit, setProduit] = useState<Choix | null>(null);
+  // Le calcul porte sur UN dosage : ses emballages, sa posologie maison. Le
+  // suppositoire de 80 mg ne se dispense pas comme celui de 600 mg.
+  const [dosageNr, setDosageNr] = useState<string | null>(null);
   const [emballages, setEmballages] = useState<PackageRow[]>([]);
   const [gtin, setGtin] = useState('');
   const [posologies, setPosologies] = useState<ProductNote[]>([]);
@@ -92,24 +103,74 @@ export function Dispensation() {
     if (!dosesPossibles.includes(uniteDose)) setUniteDose(dosesPossibles[0]);
   }, [dosesPossibles, uniteDose]);
 
-  /** Charge un produit et propose l'emballage le plus courant. */
-  const choisirProduit = useCallback(async (ligne: ProductRow, gtinScanne?: string) => {
-    setProduit(ligne);
-    setResultats([]);
-    setRecherche('');
-    setParams(new URLSearchParams({ p: ligne.authorization_nr }), { replace: true });
+  const dosage = produit?.dosages.find((d) => d.dosage_nr === dosageNr) ?? null;
 
-    const [pkgs, notes] = await Promise.all([
-      listPackages(ligne.authorization_nr).catch(() => [] as PackageRow[]),
-      notesPour(ligne.authorization_nr, ligne.atc_code, ligne.substances).catch(
-        () => [] as ProductNote[],
-      ),
-    ]);
-    setEmballages(pkgs);
-    setPosologies(notes.filter((n) => n.note_type === 'posologie'));
-    const vise = gtinScanne ? pkgs.find((p) => p.gtin === gtinScanne) : undefined;
-    appliquerEmballage(vise ?? pkgs[0]);
-  }, [setParams]);
+  // Chaque choix de médicament ou de dosage prend un numéro ; une réponse
+  // réseau qui revient avec un numéro dépassé n'écrit rien. Sans lui, cliquer
+  // 80 mg puis aussitôt 600 mg pouvait afficher l'en-tête du 600 mg avec les
+  // emballages et la posologie maison du 80 mg — sans rien signaler.
+  const demande = useRef(0);
+
+  /** Charge les emballages et la posologie d'UN dosage, et propose le premier emballage. */
+  const choisirDosage = useCallback(
+    async (choix: Choix, nr: string | null, gtinScanne?: string | null) => {
+      const mien = ++demande.current;
+      setDosageNr(nr);
+      setEmballages([]);
+      setPosologies([]);
+      setGtin('');
+      // La quantité par emballage appartenait à l'ancien dosage : la garder
+      // ferait calculer le 600 mg avec la boîte du 80 mg.
+      setParEmballage('');
+      const adresse = new URLSearchParams({ p: choix.nr });
+      if (nr) adresse.set('d', nr);
+      setParams(adresse, { replace: true });
+      if (!nr) return;
+
+      const d = choix.dosages.find((x) => x.dosage_nr === nr);
+      const [pkgs, notes] = await Promise.all([
+        listPackages(choix.nr).catch(() => [] as PackageRow[]),
+        notesPour(choix.nr, nr, choix.atc, d?.substances ?? null).catch(
+          () => [] as ProductNote[],
+        ),
+      ]);
+      if (demande.current !== mien) return;
+      const duDosage = pkgs.filter((k) => k.dosage_nr === nr);
+      setEmballages(duDosage);
+      setPosologies(notes.filter((n) => n.note_type === 'posologie'));
+      const vise = gtinScanne ? duDosage.find((k) => k.gtin === gtinScanne) : undefined;
+      appliquerEmballage(vise ?? duDosage[0]);
+    },
+    [setParams],
+  );
+
+  /**
+   * Ouvre un médicament par son n° d'autorisation — depuis la recherche, un
+   * scan ou l'adresse. Plus aucune recherche TEXTE par numéro : c'est ce qui
+   * faisait arriver vide le bouton « Dispensation » de la fiche produit.
+   */
+  const choisir = useCallback(
+    async (nr: string, nrDosage: string | null, gtinScanne?: string | null) => {
+      const mien = ++demande.current;
+      const hit = await productHit(nr).catch(() => null);
+      if (!hit || demande.current !== mien) return;
+      const choix: Choix = {
+        nr,
+        nom: hit.product.name,
+        atc: hit.product.atc_code,
+        dosages: hit.dosages ?? [],
+      };
+      setProduit(choix);
+      setResultats([]);
+      setRecherche('');
+      // Un seul dosage : rien à choisir. Plusieurs sans indication : on
+      // DEMANDE, plutôt que d'en supposer un — c'est l'erreur qu'on corrige.
+      const cible =
+        nrDosage ?? (choix.dosages.length === 1 ? choix.dosages[0].dosage_nr : null);
+      await choisirDosage(choix, cible, gtinScanne);
+    },
+    [choisirDosage],
+  );
 
   /** Un emballage choisi renseigne quantité et galénique — sans les verrouiller. */
   function appliquerEmballage(pkg: PackageRow | undefined) {
@@ -136,20 +197,15 @@ export function Dispensation() {
         const code = normalizeScannedCode(q);
         const hit = code ? await scanGtin(code).catch(() => null) : null;
         if (vivant && hit) {
-          const lignes = await searchProducts(hit.product.name).catch(() => []);
-          const ligne = lignes.find(
-            (l) => l.authorization_nr === hit.product.authorization_nr,
-          );
-          if (ligne) {
-            await choisirProduit(ligne, code ?? undefined);
-            if (vivant) setCherche(false);
-            return;
-          }
+          // Le scan désigne un emballage, donc un dosage : on l'ouvre tel quel.
+          await choisir(hit.product.authorization_nr, hit.product.dosage_nr, code);
+          if (vivant) setCherche(false);
+          return;
         }
       }
-      const lignes = await searchProducts(q).catch(() => []);
+      const lignes = await searchDosages(q).catch(() => [] as DosageHit[]);
       if (vivant) {
-        setResultats(lignes.slice(0, 8));
+        setResultats(lignes.slice(0, 10));
         setCherche(false);
       }
     }, 180);
@@ -157,20 +213,26 @@ export function Dispensation() {
       vivant = false;
       clearTimeout(minuteur);
     };
-  }, [recherche, choisirProduit]);
+  }, [recherche, choisir]);
 
-  // Arrivée depuis une fiche : /dispensation?p=12345
+  // Arrivée depuis une fiche : /dispensation?p=47505&d=3. L'adresse n'est lue
+  // qu'UNE fois. Dépendre de `produit`, comme avant, faisait revenir le
+  // médicament retiré par × ou « Effacer » : le routeur met l'URL à jour dans
+  // une transition, après le rendu où produit vaut déjà null — l'effet voyait
+  // encore p= et rechargeait tout.
   const depuisUrl = params.get('p');
+  const dosageUrl = params.get('d');
+  const adresseLue = useRef(false);
   useEffect(() => {
-    if (!depuisUrl || produit) return;
-    searchProducts(depuisUrl)
-      .then((lignes) => lignes.find((l) => l.authorization_nr === depuisUrl))
-      .then((ligne) => ligne && choisirProduit(ligne))
-      .catch(() => undefined);
-  }, [depuisUrl, produit, choisirProduit]);
+    if (adresseLue.current || !depuisUrl) return;
+    adresseLue.current = true;
+    void choisir(depuisUrl, dosageUrl);
+  }, [depuisUrl, dosageUrl, choisir]);
 
   function reinitialiser() {
+    demande.current++;
     setProduit(null);
+    setDosageNr(null);
     setEmballages([]);
     setPosologies([]);
     setGtin('');
@@ -243,19 +305,20 @@ export function Dispensation() {
               <Card>
                 <CardHeader icon={Pill} title="Médicament (facultatif)" />
                 {produit ? (
+                  <div>
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-ink text-[15px] font-medium">{libelleFr(produit)}</p>
-                      {produit.substances && (
-                        <p className="text-ink-3 mt-0.5 truncate text-[13px]">
-                          {produit.substances}
-                        </p>
+                      <p className="text-ink text-[15px] font-medium">{dosage?.name ?? produit.nom}</p>
+                      {dosage?.substances && (
+                        <p className="text-ink-3 mt-0.5 truncate text-[13px]">{dosage.substances}</p>
                       )}
                     </div>
                     <button
                       type="button"
                       onClick={() => {
+                        demande.current++;
                         setProduit(null);
+                        setDosageNr(null);
                         setEmballages([]);
                         setPosologies([]);
                         setParams(new URLSearchParams(), { replace: true });
@@ -267,6 +330,31 @@ export function Dispensation() {
                     >
                       <X size={15} strokeWidth={1.75} />
                     </button>
+                  </div>
+                  {produit.dosages.length > 1 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {!dosage && (
+                        <span className="text-warning-text text-[12.5px]">Quel dosage ?</span>
+                      )}
+                      {produit.dosages.map((d) => (
+                        <button
+                          key={d.dosage_nr}
+                          type="button"
+                          onClick={() => void choisirDosage(produit, d.dosage_nr)}
+                          aria-pressed={d.dosage_nr === dosageNr}
+                          title={d.name}
+                          className={cn(
+                            'donnee cursor-pointer rounded-full border px-2.5 py-0.5 text-[12.5px] transition-colors',
+                            d.dosage_nr === dosageNr
+                              ? 'border-accent bg-accent text-on-accent font-semibold'
+                              : 'border-line bg-surface-1 text-ink-2 hover:border-accent hover:text-accent',
+                          )}
+                        >
+                          {d.label || d.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   </div>
                 ) : (
                   <div className="relative">
@@ -291,15 +379,13 @@ export function Dispensation() {
                       <div className="border-line bg-surface-1 shadow-card rounded-card mt-1.5 overflow-hidden border">
                         {resultats.map((ligne) => (
                           <button
-                            key={ligne.authorization_nr}
+                            key={`${ligne.authorization_nr}-${ligne.dosage_nr}`}
                             type="button"
-                            onClick={() => choisirProduit(ligne)}
+                            onClick={() => void choisir(ligne.authorization_nr, ligne.dosage_nr)}
                             className="border-line hover:bg-surface-2 block w-full cursor-pointer
                                        border-b px-3 py-2 text-left last:border-0"
                           >
-                            <span className="text-ink block truncate text-[14px]">
-                              {libelleFr(ligne)}
-                            </span>
+                            <span className="text-ink block truncate text-[14px]">{ligne.name}</span>
                             {ligne.substances && (
                               <span className="text-ink-3 block truncate text-[12px]">
                                 {ligne.substances}
@@ -336,7 +422,9 @@ export function Dispensation() {
 
                 {posologies.length > 0 && (
                   <div className="bg-dose-soft text-dose-text rounded-control mt-3 px-3 py-2">
-                    <p className="etiquette text-dose-text mb-1">Posologie maison</p>
+                    <p className="etiquette text-dose-text mb-1">
+                      Posologie maison{dosage ? ` · ${dosage.label || dosage.name}` : ''}
+                    </p>
                     {posologies.map((note) => (
                       <p key={note.id} className="text-[13.5px] whitespace-pre-wrap">
                         {note.body}
